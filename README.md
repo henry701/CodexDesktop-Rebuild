@@ -125,8 +125,17 @@ cp out/make/zip/linux/x64/Codex-linux-x64-*.zip packaging/arch/codex-desktop-bin
 cd packaging/arch/codex-desktop-bin
 # bump pkgver/pkgrel in PKGBUILD when the version changes
 updpkgsums
-yay -Bi .
+makepkg -si
 ```
+
+To rebuild without reinstalling:
+
+```bash
+makepkg -f
+yay -U --noconfirm codex-desktop-*.pkg.tar.zst
+```
+
+Do **not** run `yay -Bi .` with **cleanBuild** enabled inside this repo. Yay treats local PKGBUILD directories like AUR clones and can delete `PKGBUILD`, sources, and `.SRCINFO` from the tree. Prefer `makepkg -si`, or copy the packaging dir to `~/aur/codex-desktop-bin/` if you want yay-driven builds.
 
 Installs:
 
@@ -178,6 +187,17 @@ GitHub Actions automatically builds on:
 - Tag `v*` → Creates draft release
 
 CI uses Node 22 (see `.nvmrc`).
+
+## Git remotes
+
+This fork uses two remotes:
+
+| Remote | Repository |
+|--------|------------|
+| `fork` | `henry701/CodexDesktop-Rebuild` (primary push target) |
+| `origin` | `Haleclipse/CodexDesktop-Rebuild` (upstream) |
+
+`master` tracks `fork/master`. Push with `git push fork master`; pull updates with `git pull fork master`.
 
 ## Credits
 

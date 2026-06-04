@@ -1,6 +1,9 @@
 # Codex Desktop — prebuilt Electron bundle (local zip or GitHub release).
 # Build the zip first: npm run build:linux-x64
 # Place Codex-linux-x64-${pkgver}.zip in this directory, then: makepkg -si
+#
+# Do NOT run `yay -Bi .` with cleanBuild on this in-repo directory — yay can
+# delete PKGBUILD, sources, and .SRCINFO. Use makepkg -si instead.
 
 pkgname=codex-desktop
 pkgver=26.601.21317
