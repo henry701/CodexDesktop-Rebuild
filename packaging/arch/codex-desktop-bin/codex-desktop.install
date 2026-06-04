@@ -1,4 +1,10 @@
+_fix_app_dir_mode() {
+  # Electron forge zip ships Codex-linux-x64/ as 0700; pacman won't fix an existing dir on upgrade.
+  [[ -d usr/lib/codex-desktop ]] && chmod 755 usr/lib/codex-desktop
+}
+
 post_install() {
+  _fix_app_dir_mode
   gtk-update-icon-cache -q -t -f usr/share/icons/hicolor 2>/dev/null || true
 }
 

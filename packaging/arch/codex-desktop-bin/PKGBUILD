@@ -4,7 +4,7 @@
 
 pkgname=codex-desktop
 pkgver=26.601.21317
-pkgrel=1
+pkgrel=3
 pkgdesc="OpenAI Codex Desktop — AI coding assistant (prebuilt Electron bundle)"
 arch=('x86_64')
 url="https://github.com/Haleclipse/CodexDesktop-Rebuild"
@@ -45,11 +45,24 @@ sha256sums=('2c6ea7dfe7a59794f24fbc452a41b8a833e054d73b9bb111e6b233d9a12d5c52'
 
 prepare() {
   bsdtar -xf "Codex-linux-x64-${pkgver}.zip"
+  chmod 755 "Codex-linux-x64"
+  for _bin in Codex chrome_crashpad_handler; do
+    [[ -f "Codex-linux-x64/${_bin}" ]] && chmod 755 "Codex-linux-x64/${_bin}"
+  done
+  for _bin in resources/codex resources/rg; do
+    [[ -f "Codex-linux-x64/${_bin}" ]] && chmod 755 "Codex-linux-x64/${_bin}"
+  done
 }
 
 package() {
   install -dm755 "${pkgdir}/usr/lib/codex-desktop"
   cp -a "Codex-linux-x64/." "${pkgdir}/usr/lib/codex-desktop/"
+  chmod 755 "${pkgdir}/usr/lib/codex-desktop"
+  chmod 755 \
+    "${pkgdir}/usr/lib/codex-desktop/Codex" \
+    "${pkgdir}/usr/lib/codex-desktop/chrome_crashpad_handler" \
+    "${pkgdir}/usr/lib/codex-desktop/resources/codex" \
+    "${pkgdir}/usr/lib/codex-desktop/resources/rg" 2>/dev/null || true
 
   install -Dm755 codex-desktop.sh "${pkgdir}/usr/bin/codex-desktop"
   install -Dm644 codex-desktop.desktop "${pkgdir}/usr/share/applications/codex-desktop.desktop"
