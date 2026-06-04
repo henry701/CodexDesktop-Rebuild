@@ -7,7 +7,7 @@
 
 pkgname=codex-desktop
 pkgver=26.601.21317
-pkgrel=4
+pkgrel=5
 pkgdesc="OpenAI Codex Desktop — AI coding assistant (prebuilt Electron bundle)"
 arch=('x86_64')
 url="https://github.com/Haleclipse/CodexDesktop-Rebuild"
@@ -39,9 +39,9 @@ source=(
   "LICENSE"
   "LICENSE.electron"
 )
-sha256sums=('a84f12d3bba5960608be37a687725cc5ff5e421a9e36c2050c23824f497cf54f'
+sha256sums=('8f1582a010cd1dce61fbc370c6a59383023fd52743c197ea78f34bb8c239bf28'
             'a364838e5ad66e5c06248122afee90b650fd82cf8072fd5f6449de9ee28e4fd3'
-            '1454ca5fc6bfee316c7362b34e08a6bdd13bb56ab6ca229e1b04bc953ed7578a'
+            'a37de28695cd386f894f9e34a65d03532f2f2e6e5528cb5bf33c7fedd12e88d1'
             '0c1d3bb97c171c06d0b3c8007433877497d63ef91e51562478530195d2448514'
             'e7dba96daee2da29812f761d25e2a32cdbb7f20a44fe0450cde2ba1f7e291877'
             '5154e165bd6c2cc0cfbcd8916498c7abab0497923bafcd5cb07673fe8480087d')

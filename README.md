@@ -152,6 +152,15 @@ Runtime dependencies are declared in the PKGBUILD (`gtk3`, `nss`, `mesa`, etc.).
 
 Launch from the menu or run `codex-desktop`.
 
+Electron 42 defaults to native Wayland on Wayland sessions; `ELECTRON_OZONE_PLATFORM_HINT` no longer works (removed in Electron 38). The launcher passes `--ozone-platform=x11` by default (XWayland). Override:
+
+```bash
+CODEX_OZONE_PLATFORM=wayland codex-desktop    # native Wayland
+CODEX_OZONE_PLATFORM=auto codex-desktop       # Chromium auto-detect
+```
+
+`ELECTRON_OZONE_PLATFORM_HINT` is still accepted by the wrapper as a legacy alias mapped to `--ozone-platform`.
+
 ## Development
 
 ```bash
