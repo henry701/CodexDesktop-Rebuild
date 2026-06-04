@@ -9,11 +9,13 @@
  * The delete button calls the app-server "thread/delete" protocol via the
  * message router, which permanently removes the thread (DB + rollout file).
  *
- * Requires @cometix/codex CLI with thread/delete support.
+ * Requires @cometix/codex CLI with thread/delete support — only runs when
+ * USE_COMETIX_CODEX=1 or --use-cometix-codex (see build-flags.js).
  */
 const fs = require("fs");
 const acorn = require("acorn");
 const { locateBundles, relPath } = require("./patch-util");
+const { isCometixCodexEnabled } = require("./build-flags");
 
 // ─── Layer 1: app-main route injection ──────────────────────────
 
@@ -270,6 +272,12 @@ function patchDataControls(bundles) {
 
 function main() {
   const args = process.argv.slice(2);
+
+  if (!isCometixCodexEnabled(args)) {
+    console.log("  [skip] patch-archive-delete requires USE_COMETIX_CODEX=1 (Cometix CLI thread/delete)");
+    return;
+  }
+
   const platform = args.find((a) =>
     ["mac-arm64", "mac-x64", "win"].includes(a),
   );

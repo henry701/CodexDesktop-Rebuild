@@ -2,18 +2,22 @@
 /**
  * Smart development startup script
  * Automatically detects system architecture and sets correct CLI path
+ *
+ * Default: upstream bundled CLI from sync-upstream (src/{platform}/codex).
+ * Opt-in Cometix fork: USE_COMETIX_CODEX=1 npm run dev (see build-flags.js).
  */
 
 const { spawn } = require('child_process');
 const path = require('path');
 const os = require('os');
 const fs = require('fs');
+const { isCometixCodexEnabled, isSystemCliEnabled } = require('./build-flags');
+const { resolveCodexVendor } = require('./cometix-vendor');
+const { resolveFromPath } = require('./system-cli');
 
-// Detect platform and architecture
 const platform = process.platform;
 const arch = os.arch();
 
-// Map to CLI binary paths
 const platformMap = {
   darwin: {
     x64: 'darwin-x64',
@@ -35,62 +39,61 @@ if (!binDir) {
 }
 
 const cliName = platform === 'win32' ? 'codex.exe' : 'codex';
+const useCometixCodex = isCometixCodexEnabled();
+const linuxPlatform = `${platform}-${arch}`;
+const useSystemCli = isSystemCliEnabled(
+  platform === 'linux' ? linuxPlatform : '',
+);
 
-// Priority: upstream CLI from src/ > @cometix/codex vendor > resources/bin/
 const srcPlatform = platform === 'darwin'
   ? (arch === 'arm64' ? 'mac-arm64' : 'mac-x64')
-  : platform === 'win32' ? 'win' : `${platform}-${arch}`;
+  : platform === 'win32' ? 'win' : linuxPlatform;
 
-const candidates = [
-  // 1. Upstream CLI (from sync-upstream, matches app version)
-  path.join(__dirname, '..', 'src', srcPlatform, cliName),
-  // 2. @cometix/codex platform package (0.128+ uses separate packages)
-  (() => {
-    const pkgMap = {
-      'darwin-arm64': 'codex-darwin-arm64',
-      'darwin-x64': 'codex-darwin-x64',
-      'linux-arm64': 'codex-linux-arm64',
-      'linux-x64': 'codex-linux-x64',
-      'win32-x64': 'codex-win32-x64',
-    };
-    const tripleMap = {
-      'darwin-arm64': 'aarch64-apple-darwin',
-      'darwin-x64': 'x86_64-apple-darwin',
-      'linux-arm64': 'aarch64-unknown-linux-musl',
-      'linux-x64': 'x86_64-unknown-linux-musl',
-      'win32-x64': 'x86_64-pc-windows-msvc',
-    };
-    const pkg = pkgMap[binDir], triple = tripleMap[binDir];
-    if (!pkg || !triple) return null;
-    // New structure: @cometix/codex-{platform}/vendor/{triple}/codex/codex
-    const newPath = path.join(__dirname, '..', 'node_modules', '@cometix', pkg, 'vendor', triple, 'codex', cliName);
-    if (fs.existsSync(newPath)) return newPath;
-    // Old structure: @cometix/codex/vendor/{triple}/codex/codex
-    const oldPath = path.join(__dirname, '..', 'node_modules', '@cometix', 'codex', 'vendor', triple, 'codex', cliName);
-    return fs.existsSync(oldPath) ? oldPath : null;
-  })(),
-  // 3. Local resources/bin/
-  path.join(__dirname, '..', 'resources', 'bin', binDir, cliName),
-].filter(Boolean);
+const upstreamCli = path.join(__dirname, '..', 'src', srcPlatform, cliName);
+const resourcesCli = path.join(__dirname, '..', 'resources', 'bin', binDir, cliName);
 
-const cliPath = candidates.find(p => fs.existsSync(p));
+/** @type {string | undefined} */
+let cliPath;
 
-// Verify CLI exists
-if (!fs.existsSync(cliPath)) {
-  console.error(`CLI not found at: ${cliPath}`);
-  console.error('Tried: resources/bin/ and node_modules/@cometix/codex/vendor/');
+if (useCometixCodex) {
+  const buildPlatform = platform === 'darwin'
+    ? (arch === 'arm64' ? 'mac-arm64' : 'mac-x64')
+    : platform === 'win32' ? 'win' : linuxPlatform;
+  cliPath = resolveCodexVendor(buildPlatform) ?? undefined;
+} else if (platform === 'linux' && useSystemCli) {
+  cliPath = resolveFromPath('codex', process.env.CODEX_CLI_PATH) ?? undefined;
+}
+
+if (!cliPath && fs.existsSync(upstreamCli)) {
+  cliPath = upstreamCli;
+}
+
+if (!cliPath && fs.existsSync(resourcesCli)) {
+  cliPath = resourcesCli;
+}
+
+if (!cliPath) {
+  console.error('CLI not found.');
+  console.error(`  upstream: ${upstreamCli}`);
+  if (useCometixCodex) {
+    console.error('  Cometix vendor lookup failed (USE_COMETIX_CODEX=1)');
+  } else if (platform === 'linux' && useSystemCli) {
+    console.error('  Install codex on PATH, set CODEX_CLI_PATH, or run npm run sync first.');
+  } else {
+    console.error('  Set USE_COMETIX_CODEX=1 to use @cometix/codex, or run npm run sync first.');
+  }
   process.exit(1);
 }
 
-// Resolve app entry: prefer platform-specific _asar/ (has its own package.json)
 const appRoot = path.join(__dirname, '..', 'src', srcPlatform, '_asar');
 const appEntry = fs.existsSync(appRoot) ? appRoot : path.join(__dirname, '..');
 
 console.log(`[start-dev] Platform: ${platform}, Arch: ${arch}`);
+console.log(`[start-dev] USE_COMETIX_CODEX: ${useCometixCodex ? 'yes' : 'no'}`);
+console.log(`[start-dev] USE_SYSTEM_CLI: ${platform === 'linux' && useSystemCli ? 'yes' : 'no'}`);
 console.log(`[start-dev] CLI Path: ${cliPath}`);
 console.log(`[start-dev] App Root: ${appEntry}`);
 
-// Launch Electron with CLI path
 const electronBin = require('electron');
 const child = spawn(electronBin, [appEntry], {
   cwd: path.join(__dirname, '..'),

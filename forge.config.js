@@ -2,6 +2,43 @@ const { FuseV1Options, FuseVersion } = require("@electron/fuses");
 const path = require("path");
 const fs = require("fs");
 
+function hasRpmDatabase() {
+  if (process.env.FORGE_LINUX_RPM === "1") return true;
+  return fs.existsSync("/var/lib/rpm/Packages");
+}
+
+const LINUX_DEB_MAKER = {
+  name: "@electron-forge/maker-deb",
+  config: {
+    options: {
+      name: "codex",
+      productName: "Codex",
+      genericName: "AI Coding Assistant",
+      categories: ["Development", "Utility"],
+      bin: "Codex",
+      maintainer: "Cometix Space",
+      homepage: "https://github.com/Haleclipse/CodexDesktop-Rebuild",
+      icon: "./resources/electron.png",
+    },
+  },
+};
+
+const LINUX_RPM_MAKER = {
+  name: "@electron-forge/maker-rpm",
+  config: {
+    options: {
+      name: "codex",
+      productName: "Codex",
+      genericName: "AI Coding Assistant",
+      categories: ["Development", "Utility"],
+      bin: "Codex",
+      license: "Apache-2.0",
+      homepage: "https://github.com/Haleclipse/CodexDesktop-Rebuild",
+      icon: "./resources/electron.png",
+    },
+  },
+};
+
 module.exports = {
   packagerConfig: {
     name: "Codex",
@@ -68,14 +105,8 @@ module.exports = {
       },
     },
     { name: "@electron-forge/maker-zip", platforms: ["win32"] },
-    {
-      name: "@electron-forge/maker-deb",
-      config: { options: { name: "codex", productName: "Codex", genericName: "AI Coding Assistant", categories: ["Development", "Utility"], bin: "Codex", maintainer: "Cometix Space", homepage: "https://github.com/Haleclipse/CodexDesktop-Rebuild", icon: "./resources/electron.png" } },
-    },
-    {
-      name: "@electron-forge/maker-rpm",
-      config: { options: { name: "codex", productName: "Codex", genericName: "AI Coding Assistant", categories: ["Development", "Utility"], bin: "Codex", license: "Apache-2.0", homepage: "https://github.com/Haleclipse/CodexDesktop-Rebuild", icon: "./resources/electron.png" } },
-    },
+    LINUX_DEB_MAKER,
+    ...(hasRpmDatabase() ? [LINUX_RPM_MAKER] : []),
     { name: "@electron-forge/maker-zip", platforms: ["linux"] },
   ],
   plugins: [

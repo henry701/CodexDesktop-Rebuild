@@ -3,11 +3,18 @@
   "productName": "Codex",
   "version": "26.601.21317",
   "description": "Codex Electron App - Cross-platform Build",
+  "engines": {
+    "node": ">=22 <23"
+  },
   "main": "src/.vite/build/bootstrap.js",
   "scripts": {
     "start": "node scripts/start-dev.js",
     "dev": "node scripts/start-dev.js",
     "patch": "node scripts/patch-all.js",
+    "patch:linux-x64": "node scripts/patch-all.js mac-x64",
+    "patch:linux-arm64": "node scripts/patch-all.js mac-arm64",
+    "patch:linux-x64:cometix": "USE_COMETIX_CODEX=1 node scripts/patch-all.js mac-x64",
+    "patch:linux-arm64:cometix": "USE_COMETIX_CODEX=1 node scripts/patch-all.js mac-arm64",
     "patch:mac": "node scripts/patch-all.js mac-arm64 && node scripts/patch-all.js mac-x64",
     "patch:win": "node scripts/patch-all.js win",
     "forge:package": "electron-forge package",
@@ -20,6 +27,9 @@
     "build:win": "npm run build:win-x64",
     "build:linux-x64": "node scripts/prepare-src.js --platform linux-x64 && npm run rebuild:native && node scripts/sync-native-modules.js --platform linux-x64 && rm -rf out && electron-forge make --platform=linux --arch=x64",
     "build:linux-arm64": "node scripts/prepare-src.js --platform linux-arm64 && npm run rebuild:native && node scripts/sync-native-modules.js --platform linux-arm64 && rm -rf out && electron-forge make --platform=linux --arch=arm64",
+    "build:linux-x64:upstream": "USE_SYSTEM_CLI=0 node scripts/prepare-src.js --platform linux-x64 && npm run rebuild:native && node scripts/sync-native-modules.js --platform linux-x64 && rm -rf out && electron-forge make --platform=linux --arch=x64",
+    "build:linux-x64:cometix": "USE_COMETIX_CODEX=1 node scripts/prepare-src.js --platform linux-x64 && npm run rebuild:native && node scripts/sync-native-modules.js --platform linux-x64 && rm -rf out && electron-forge make --platform=linux --arch=x64",
+    "build:linux-arm64:cometix": "USE_COMETIX_CODEX=1 node scripts/prepare-src.js --platform linux-arm64 && npm run rebuild:native && node scripts/sync-native-modules.js --platform linux-arm64 && rm -rf out && electron-forge make --platform=linux --arch=arm64",
     "build:linux": "npm run build:linux-x64 && npm run build:linux-arm64",
     "build:all": "npm run build:mac && npm run build:win && npm run build:linux",
     "sync": "node scripts/sync-upstream.js",
@@ -46,7 +56,7 @@
   "dependencies": {
     "@sentry/electron": "^7.5.0",
     "@sentry/node": "10.29.0",
-    "better-sqlite3": "^12.4.6",
+    "better-sqlite3": "file:vendor/better-sqlite3-12.10.0-electron42.tgz",
     "electron-context-menu": "^4.1.1",
     "electron-squirrel-startup": "^1.0.1",
     "encoding": "^0.1.13",
@@ -62,7 +72,7 @@
     "zod": "^4.1.13"
   },
   "codexBuildFlavor": "prod",
-  "codexBuildNumber": "1272",
-  "codexSparkleFeedUrl": "https://persistent.oaistatic.com/codex-app-prod/appcast.xml",
-  "codexSparklePublicKey": "rhcBvttuqDFriyNqwTQJR3L4UT1WjIK4QxtwtwusVic="
+  "codexBuildNumber": "3511",
+  "codexSparkleFeedUrl": "https://persistent.oaistatic.com/codex-app-prod/appcast-x64.xml",
+  "codexSparklePublicKey": "mNfr1v9t63BfgDtlw4C8lRvSY6uMggIXABDOCi3tS6k="
 }
