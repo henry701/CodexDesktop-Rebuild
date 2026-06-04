@@ -51,7 +51,7 @@
     "@electron/fuses": "^1.8.0",
     "@electron/rebuild": "^3.7.1",
     "acorn": "^8.16.0",
-    "electron": "^42.0.1",
+    "electron": "42.1.0",
     "fast-xml-parser": "^5.5.9"
   },
   "dependencies": {

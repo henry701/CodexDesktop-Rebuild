@@ -113,7 +113,8 @@ CLI equivalents: `--use-system-cli`, `--no-system-cli`, `--use-cometix-codex`
 ## Other build notes
 
 - **`better-sqlite3`** — pinned to `vendor/better-sqlite3-12.10.0-electron42.tgz` until upstream ships Electron 42 V8 API support ([WiseLibs/better-sqlite3#1475](https://github.com/WiseLibs/better-sqlite3/pull/1475)).
-- **`ensure-electron-dist.js`** — Node 24+ workaround: full Electron runtime via system `unzip` (runs on `postinstall` and before forge package/make). Avoids partial dist trees that break packaging and Linux renderer compositing (e.g. sidebar transparency).
+- **`electron`** — pinned to **42.1.0** (exact), matching the upstream macOS app extract (`src/mac-x64/_asar/package.json`). Using 42.0.1 omits Linux transparent-window fixes backported in 42.1.x ([#51430](https://github.com/electron/electron/pull/51430)).
+- **`ensure-electron-dist.js`** — Node 24+ workaround: full Electron runtime via system `unzip` (runs on `postinstall` and before forge package/make).
 - **RPM packages** — skipped when no RPM database is present (typical on Arch). Force with `FORGE_LINUX_RPM=1` after initializing an RPM db (e.g. `sudo rpm --initdb`).
 
 ## Install on Arch Linux
