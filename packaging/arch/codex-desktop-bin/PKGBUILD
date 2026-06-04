@@ -1,0 +1,62 @@
+# Codex Desktop — prebuilt Electron bundle (local zip or GitHub release).
+# Build the zip first: npm run build:linux-x64
+# Place Codex-linux-x64-${pkgver}.zip in this directory, then: makepkg -si
+
+pkgname=codex-desktop
+pkgver=26.601.21317
+pkgrel=1
+pkgdesc="OpenAI Codex Desktop — AI coding assistant (prebuilt Electron bundle)"
+arch=('x86_64')
+url="https://github.com/Haleclipse/CodexDesktop-Rebuild"
+license=('Apache-2.0')
+depends=(
+  'alsa-lib'
+  'at-spi2-core'
+  'gtk3'
+  'libdrm'
+  'libnotify'
+  'libxcb'
+  'mesa'
+  'nss'
+  'xdg-utils'
+)
+optdepends=(
+  'gvfs: trash and file-manager integration'
+  'libsecret: GNOME Keyring credential storage'
+  'trash-cli: freedesktop trash support without GVFS'
+  'xdg-desktop-portal: sandboxed desktop integration'
+)
+options=('!strip')
+install=codex-desktop.install
+source=(
+  "Codex-linux-x64-${pkgver}.zip"
+  "codex-desktop.desktop"
+  "codex-desktop.sh"
+  "codex-desktop.png"
+  "LICENSE"
+  "LICENSE.electron"
+)
+sha256sums=('2c6ea7dfe7a59794f24fbc452a41b8a833e054d73b9bb111e6b233d9a12d5c52'
+            'a364838e5ad66e5c06248122afee90b650fd82cf8072fd5f6449de9ee28e4fd3'
+            '1454ca5fc6bfee316c7362b34e08a6bdd13bb56ab6ca229e1b04bc953ed7578a'
+            '0c1d3bb97c171c06d0b3c8007433877497d63ef91e51562478530195d2448514'
+            'e7dba96daee2da29812f761d25e2a32cdbb7f20a44fe0450cde2ba1f7e291877'
+            '5154e165bd6c2cc0cfbcd8916498c7abab0497923bafcd5cb07673fe8480087d')
+
+prepare() {
+  bsdtar -xf "Codex-linux-x64-${pkgver}.zip"
+}
+
+package() {
+  install -dm755 "${pkgdir}/usr/lib/codex-desktop"
+  cp -a "Codex-linux-x64/." "${pkgdir}/usr/lib/codex-desktop/"
+
+  install -Dm755 codex-desktop.sh "${pkgdir}/usr/bin/codex-desktop"
+  install -Dm644 codex-desktop.desktop "${pkgdir}/usr/share/applications/codex-desktop.desktop"
+  install -Dm644 codex-desktop.png "${pkgdir}/usr/share/pixmaps/codex-desktop.png"
+  install -Dm644 codex-desktop.png "${pkgdir}/usr/share/icons/hicolor/256x256/apps/codex-desktop.png"
+
+  install -dm755 "${pkgdir}/usr/share/licenses/${pkgname}"
+  install -Dm644 LICENSE "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
+  install -Dm644 LICENSE.electron "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE.electron"
+}

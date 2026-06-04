@@ -115,6 +115,32 @@ CLI equivalents: `--use-system-cli`, `--no-system-cli`, `--use-cometix-codex`
 - **`better-sqlite3`** — pinned to `vendor/better-sqlite3-12.10.0-electron42.tgz` until upstream ships Electron 42 V8 API support ([WiseLibs/better-sqlite3#1475](https://github.com/WiseLibs/better-sqlite3/pull/1475)).
 - **RPM packages** — skipped when no RPM database is present (typical on Arch). Force with `FORGE_LINUX_RPM=1` after initializing an RPM db (e.g. `sudo rpm --initdb`).
 
+## Install on Arch Linux
+
+A local PKGBUILD wraps the prebuilt Linux zip (full Electron bundle, bundled `codex`/`rg` CLIs, no system Electron). The pacman package name is **`codex-desktop`**; the directory `packaging/arch/codex-desktop-bin/` uses the `-bin` suffix only as AUR convention for prebuilt packages.
+
+```bash
+npm run build:linux-x64
+cp out/make/zip/linux/x64/Codex-linux-x64-*.zip packaging/arch/codex-desktop-bin/
+cd packaging/arch/codex-desktop-bin
+# bump pkgver/pkgrel in PKGBUILD when the version changes
+updpkgsums
+yay -Bi .
+```
+
+Installs:
+
+| Path | Purpose |
+|------|---------|
+| `/usr/lib/codex-desktop/` | Full Electron bundle |
+| `/usr/bin/codex-desktop` | Launcher (`--no-sandbox`) |
+| `/usr/share/applications/codex-desktop.desktop` | Application menu entry |
+| `/usr/share/icons/hicolor/256x256/apps/codex-desktop.png` | Icon |
+
+Runtime dependencies are declared in the PKGBUILD (`gtk3`, `nss`, `mesa`, etc.). Optional: `gvfs`, `libsecret`, `trash-cli`, `xdg-desktop-portal`.
+
+Launch from the menu or run `codex-desktop`.
+
 ## Development
 
 ```bash
@@ -139,6 +165,8 @@ npm run dev
 │   ├── system-cli.js
 │   └── patch-all.js
 ├── vendor/              # better-sqlite3 Electron 42 tarball
+├── packaging/
+│   └── arch/codex-desktop-bin/  # Arch PKGBUILD (prebuilt zip → pacman)
 ├── forge.config.js      # Electron Forge config
 └── package.json
 ```

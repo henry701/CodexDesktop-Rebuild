@@ -1,0 +1,6 @@
+Codex Desktop is a rebuild and redistribution of the OpenAI Codex Desktop
+application for cross-platform use. The Codex CLI component is licensed under
+Apache-2.0 by OpenAI.
+
+This package bundles the Electron runtime, which is licensed separately; see
+LICENSE.electron in this directory.

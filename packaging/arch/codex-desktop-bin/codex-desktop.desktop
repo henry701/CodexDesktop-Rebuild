@@ -1,0 +1,9 @@
+[Desktop Entry]
+Name=Codex
+Comment=Codex Electron App - Cross-platform Build
+GenericName=AI Coding Assistant
+Exec=codex-desktop %U
+Icon=codex-desktop
+Type=Application
+StartupNotify=true
+Categories=Development;Utility;
