@@ -1,6 +1,7 @@
 const { FuseV1Options, FuseVersion } = require("@electron/fuses");
 const path = require("path");
 const fs = require("fs");
+const { main: ensureElectronDist } = require("./scripts/ensure-electron-dist");
 
 function hasRpmDatabase() {
   if (process.env.FORGE_LINUX_RPM === "1") return true;
@@ -125,6 +126,9 @@ module.exports = {
     },
   ],
   hooks: {
+    prePackage: async () => {
+      ensureElectronDist();
+    },
     // Copy everything from the platform dir to the app's Resources:
     // - app.asar (repacked by prepare-src with patches applied)
     // - app.asar.unpacked/ (upstream native modules, untouched)

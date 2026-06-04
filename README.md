@@ -12,7 +12,7 @@ Cross-platform Electron build for OpenAI Codex Desktop App.
 
 ## Prerequisites
 
-- **Node.js 22** — required for Electron packaging (Node 24+ breaks Electron zip extraction). Use [nvm](https://github.com/nvm-sh/nvm):
+- **Node.js 24** — matches upstream CI. `extract-zip` can leave a partial Electron `dist/` on Node 24+; `scripts/ensure-electron-dist.js` re-extracts with system `unzip` and patches `@electron/packager` before forge runs. Use [nvm](https://github.com/nvm-sh/nvm):
 
   ```bash
   nvm install    # reads .nvmrc
@@ -113,6 +113,7 @@ CLI equivalents: `--use-system-cli`, `--no-system-cli`, `--use-cometix-codex`
 ## Other build notes
 
 - **`better-sqlite3`** — pinned to `vendor/better-sqlite3-12.10.0-electron42.tgz` until upstream ships Electron 42 V8 API support ([WiseLibs/better-sqlite3#1475](https://github.com/WiseLibs/better-sqlite3/pull/1475)).
+- **`ensure-electron-dist.js`** — Node 24+ workaround: full Electron runtime via system `unzip` (runs on `postinstall` and before forge package/make). Avoids partial dist trees that break packaging and Linux renderer compositing (e.g. sidebar transparency).
 - **RPM packages** — skipped when no RPM database is present (typical on Arch). Force with `FORGE_LINUX_RPM=1` after initializing an RPM db (e.g. `sudo rpm --initdb`).
 
 ## Install on Arch Linux
@@ -172,6 +173,7 @@ npm run dev
 │   ├── build-flags.js   # USE_COMETIX_CODEX / USE_SYSTEM_CLI
 │   ├── cometix-vendor.js
 │   ├── system-cli.js
+│   ├── ensure-electron-dist.js
 │   └── patch-all.js
 ├── vendor/              # better-sqlite3 Electron 42 tarball
 ├── packaging/
@@ -186,7 +188,7 @@ GitHub Actions automatically builds on:
 - Push to `master`
 - Tag `v*` → Creates draft release
 
-CI uses Node 22 (see `.nvmrc`).
+CI uses Node 24 (see `.nvmrc`), with the same `ensure-electron-dist` workaround as local builds.
 
 ## Git remotes
 
