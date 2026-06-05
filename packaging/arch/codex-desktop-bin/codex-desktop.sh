@@ -1,13 +1,10 @@
 #!/bin/sh
-# Electron 38+ removed ELECTRON_OZONE_PLATFORM_HINT; pass --ozone-platform instead.
-# Default: x11 (XWayland on Wayland sessions). Override:
-#   CODEX_OZONE_PLATFORM=wayland|x11|auto codex-desktop
-# Legacy alias (wrapper-only, Electron no longer reads it):
-#   ELECTRON_OZONE_PLATFORM_HINT=wayland codex-desktop
+# Electron 38+ defaults to native Wayland on Wayland sessions; that regresses
+# Codex sidebar repaint on KDE. XWayland + no GPU compositing is stable.
+args="--no-sandbox --disable-gpu-compositing"
 
-ozone="${CODEX_OZONE_PLATFORM:-x11}"
-if [ -n "${ELECTRON_OZONE_PLATFORM_HINT:-}" ]; then
-  ozone="$ELECTRON_OZONE_PLATFORM_HINT"
+if [ "${XDG_SESSION_TYPE:-}" = wayland ] || [ -n "${WAYLAND_DISPLAY:-}" ]; then
+  args="$args --ozone-platform=x11"
 fi
 
-exec /usr/lib/codex-desktop/Codex --no-sandbox --ozone-platform="$ozone" "$@"
+exec /usr/lib/codex-desktop/Codex $args "$@"
