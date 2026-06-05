@@ -1,13 +1,14 @@
 # Codex Desktop — prebuilt Electron bundle (local zip or GitHub release).
 # Build the zip first: npm run build:linux-x64
+# Optional: USE_SHIM_MODEL_PICKER=1 when building zip (patch-shim-model-picker.js)
 # Place Codex-linux-x64-${pkgver}.zip in this directory, then: makepkg -si
 #
 # Do NOT run `yay -Bi .` with cleanBuild on this in-repo directory — yay can
 # delete PKGBUILD, sources, and .SRCINFO. Use makepkg -si instead.
 
 pkgname=codex-desktop
-pkgver=26.601.21317
-pkgrel=5
+pkgver=26.602.30954
+pkgrel=6
 pkgdesc="OpenAI Codex Desktop — AI coding assistant (prebuilt Electron bundle)"
 arch=('x86_64')
 url="https://github.com/Haleclipse/CodexDesktop-Rebuild"
@@ -39,7 +40,7 @@ source=(
   "LICENSE"
   "LICENSE.electron"
 )
-sha256sums=('8f1582a010cd1dce61fbc370c6a59383023fd52743c197ea78f34bb8c239bf28'
+sha256sums=('5f949149c245aff66ba50db6b3cdc587326cd6e4a8d478d5bdaa6e085d8b4e39'
             'a364838e5ad66e5c06248122afee90b650fd82cf8072fd5f6449de9ee28e4fd3'
             'a37de28695cd386f894f9e34a65d03532f2f2e6e5528cb5bf33c7fedd12e88d1'
             '0c1d3bb97c171c06d0b3c8007433877497d63ef91e51562478530195d2448514'

@@ -109,6 +109,19 @@ CLI equivalents: `--use-system-cli`, `--no-system-cli`, `--use-cometix-codex`
 | `build:linux-x64:upstream` | Upstream macOS CLI binaries |
 | `build:linux-x64:cometix` | Cometix npm CLI binaries |
 | `build:linux-arm64:cometix` | Cometix CLI for arm64 |
+| `patch:linux-x64:shim-picker` | Desktop model picker for codex-shim catalog (`USE_SHIM_MODEL_PICKER=1`) |
+| `patch:linux-arm64:shim-picker` | Same for arm64 upstream extract |
+
+### `USE_SHIM_MODEL_PICKER` (default: **off**)
+
+ASAR patch so Codex Desktop shows models from a [**codex-shim**](https://github.com/0xSero/codex-shim) catalog. Requires `npm run sync` first. Scripts: `patch-shim-model-picker.js`, `verify-shim-picker-patch.js`.
+
+```bash
+USE_SHIM_MODEL_PICKER=1 npm run patch:linux-x64
+npm run patch:linux-x64:shim-picker   # convenience alias
+npm run build:linux-x64:shim          # patch + build
+node scripts/verify-shim-picker-patch.js mac-x64
+```
 
 ## Other build notes
 
@@ -218,6 +231,7 @@ This fork uses two remotes:
 - [OpenAI Codex](https://github.com/openai/codex) - Original Codex CLI (Apache-2.0)
 - [Cometix Space](https://github.com/Haleclipse) - Cross-platform rebuild & [@cometix/codex](https://www.npmjs.com/package/@cometix/codex) binaries
 - [Electron Forge](https://www.electronforge.io/) - Build toolchain
+- [0xSero/codex-shim](https://github.com/0xSero/codex-shim) - Responses API shim for multi-model Codex Desktop routing
 
 ## License
 

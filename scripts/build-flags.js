@@ -33,6 +33,14 @@
  * Optional explicit paths (override PATH lookup):
  *   CODEX_CLI_PATH=/usr/bin/codex
  *   RG_CLI_PATH=/usr/bin/rg
+ *
+ * USE_SHIM_MODEL_PICKER (default: off)
+ *   Apply codex-shim-style Desktop patches so Shim API catalog models appear in the picker
+ *   and sidebar (disables Statsig hidden-model gate). See scripts/patch-shim-model-picker.js.
+ *   Needs upstream ASAR extracted under src/{platform}/_asar/ (sync + patch pipeline).
+ *
+ *   USE_SHIM_MODEL_PICKER=1 npm run patch:linux-x64
+ *   node scripts/patch-all.js mac-x64 --shim-model-picker
  */
 
 /** @see https://github.com/Haleclipse/codex */
@@ -44,6 +52,7 @@ const COMETIX_CODEX_NPM = "@cometix/codex";
 const COMETIX_CLI_FLAG = "--use-cometix-codex";
 const SYSTEM_CLI_FLAG = "--use-system-cli";
 const NO_SYSTEM_CLI_FLAG = "--no-system-cli";
+const SHIM_MODEL_PICKER_FLAG = "--shim-model-picker";
 
 /**
  * @param {string[]} [argv]
@@ -63,6 +72,25 @@ function isCometixCodexEnabled(argv = process.argv.slice(2)) {
  */
 function cometixCodexPassThroughArgs(enabled) {
   return enabled ? [COMETIX_CLI_FLAG] : [];
+}
+
+/**
+ * @param {string[]} [argv]
+ * @returns {boolean}
+ */
+function isShimModelPickerEnabled(argv = process.argv.slice(2)) {
+  const env = process.env.USE_SHIM_MODEL_PICKER;
+  if (env === "1" || env === "true") return true;
+  if (env === "0" || env === "false") return false;
+  return argv.includes(SHIM_MODEL_PICKER_FLAG);
+}
+
+/**
+ * @param {boolean} enabled
+ * @returns {string[]}
+ */
+function shimModelPickerPassThroughArgs(enabled) {
+  return enabled ? [SHIM_MODEL_PICKER_FLAG] : [];
 }
 
 function logCometixCodexSkipped(context) {
@@ -108,6 +136,9 @@ module.exports = {
   isCometixCodexEnabled,
   isSystemCliEnabled,
   cometixCodexPassThroughArgs,
+  SHIM_MODEL_PICKER_FLAG,
+  isShimModelPickerEnabled,
+  shimModelPickerPassThroughArgs,
   logCometixCodexSkipped,
   warnLinuxUpstreamCli,
 };
