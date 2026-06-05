@@ -40,12 +40,13 @@ function replaceOnce(source, needle, replacement) {
   return { source: source.replace(needle, replacement), changed: true, status: "patched" };
 }
 
-function patchFile(bundlePath, patchId, needle, replacement, dryRun) {
+function patchFile(bundlePath, patchId, needle, replacement, dryRun, { required = false } = {}) {
   const source = fs.readFileSync(bundlePath, "utf8");
   const result = replaceOnce(source, needle, replacement);
   if (result.status === "missing") {
-    console.log(`  [skip] ${relPath(bundlePath)}: ${patchId} needle not found`);
-    return true;
+    const label = required ? "[!]" : "[skip]";
+    console.log(`  ${label} ${relPath(bundlePath)}: ${patchId} needle not found`);
+    return !required;
   }
   if (result.status === "ambiguous") {
     console.log(`  [!] ${relPath(bundlePath)}: ${patchId} needle matched more than once`);
@@ -108,7 +109,14 @@ function main() {
     console.log("  [!] models-and-reasoning-efforts-*.js not found");
     ok = false;
   } else if (
-    !patchFile(pickerPath, "model-picker-allowlist", PICKER_NEEDLE, PICKER_REPLACEMENT, dryRun)
+    !patchFile(
+      pickerPath,
+      "model-picker-allowlist",
+      PICKER_NEEDLE,
+      PICKER_REPLACEMENT,
+      dryRun,
+      { required: true },
+    )
   ) {
     ok = false;
   }
