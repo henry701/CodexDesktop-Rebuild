@@ -6,7 +6,7 @@
  * models-and-reasoning-efforts-*.js (26.601+). Sidebar listRecentThreads may
  * already ship with modelProviders:[] — that patch is applied when still null.
  *
- * @see https://github.com/0xSero/codex-shim
+ * @see https://github.com/henry701/codex-shim
  */
 const fs = require("fs");
 const path = require("path");

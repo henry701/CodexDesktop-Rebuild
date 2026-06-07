@@ -114,7 +114,7 @@ CLI equivalents: `--use-system-cli`, `--no-system-cli`, `--use-cometix-codex`
 
 ### `USE_SHIM_MODEL_PICKER` (default: **off**)
 
-ASAR patch so Codex Desktop shows models from a [**codex-shim**](https://github.com/0xSero/codex-shim) catalog. Requires `npm run sync` first. Scripts: `patch-shim-model-picker.js`, `verify-shim-picker-patch.js`.
+ASAR patch so Codex Desktop shows models from a [**codex-shim**](https://github.com/henry701/codex-shim) catalog (upstream: [0xSero/codex-shim](https://github.com/0xSero/codex-shim)). Requires `npm run sync` first. Scripts: `patch-shim-model-picker.js`, `verify-shim-picker-patch.js`.
 
 ```bash
 USE_SHIM_MODEL_PICKER=1 npm run patch:linux-x64
@@ -162,6 +162,8 @@ Installs:
 | `/usr/share/icons/hicolor/256x256/apps/codex-desktop.png` | Icon |
 
 Runtime dependencies are declared in the PKGBUILD (`gtk3`, `nss`, `mesa`, etc.). Optional: `gvfs`, `libsecret`, `trash-cli`, `xdg-desktop-portal`.
+
+**Recommended alongside:** [henry701/codex-shim](https://github.com/henry701/codex-shim) routes Codex Desktop through OpenCode and third-party models (Cursor, OpenCode free tier, NVIDIA NIM, etc.). Install with `uv tool install git+https://github.com/henry701/codex-shim`, run `codex-shim sync-desktop`, then optionally rebuild Desktop with `USE_SHIM_MODEL_PICKER=1` so the in-app model picker lists your shim catalog.
 
 Launch from the menu or run `codex-desktop`.
 
@@ -222,7 +224,7 @@ This fork uses two remotes:
 - [OpenAI Codex](https://github.com/openai/codex) - Original Codex CLI (Apache-2.0)
 - [Cometix Space](https://github.com/Haleclipse) - Cross-platform rebuild & [@cometix/codex](https://www.npmjs.com/package/@cometix/codex) binaries
 - [Electron Forge](https://www.electronforge.io/) - Build toolchain
-- [0xSero/codex-shim](https://github.com/0xSero/codex-shim) - Responses API shim for multi-model Codex Desktop routing
+- [henry701/codex-shim](https://github.com/henry701/codex-shim) - Responses API shim for multi-model Codex Desktop routing (fork of [0xSero/codex-shim](https://github.com/0xSero/codex-shim))
 
 ## License
 

@@ -1,6 +1,7 @@
 # Codex Desktop — prebuilt Electron bundle (local zip or GitHub release).
 # Build the zip first: npm run build:linux-x64
 # Optional: USE_SHIM_MODEL_PICKER=1 when building zip (patch-shim-model-picker.js)
+# Recommended alongside: https://github.com/henry701/codex-shim (multi-model routing via OpenCode)
 # Place Codex-linux-x64-${pkgver}.zip in this directory, then: makepkg -si
 #
 # Do NOT run `yay -Bi .` with cleanBuild on this in-repo directory — yay can
