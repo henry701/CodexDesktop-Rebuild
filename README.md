@@ -1,6 +1,42 @@
 # Codex Desktop Rebuild
 
+> **Canonical upstream:** [Haleclipse/CodexDesktop-Rebuild](https://github.com/Haleclipse/CodexDesktop-Rebuild)
+> (Cometix Space) is the cross-platform rebuild project most users should start from.
+>
+> **This repository** ([henry701/CodexDesktop-Rebuild](https://github.com/henry701/CodexDesktop-Rebuild))
+> is a personal fork. It is **not** focused on upstreaming changes. Haleclipse/upstream are
+> welcome to borrow ideas and reimplement them independently.
+
 Cross-platform Electron build for OpenAI Codex Desktop App.
+
+## This fork (henry701)
+
+The fork exists to track **OpenAI Codex Desktop** releases with **as little extra surface
+area as possible**. Updates are expected to be frequent (new upstream app drops), so the
+build pipeline favors **trust boundaries you already control** over third-party binary
+channels.
+
+| Principle | What it means here |
+|---|---|
+| **Stay close to upstream** | `npm run sync` pulls OpenAI's published macOS/Windows app bundles; Linux builds patch that ASAR locally instead of inventing a parallel app tree. |
+| **Minimize supply-chain risk** | Third-party CLI redistribution (`@cometix/codex` via npm) is **opt-in only** (`USE_COMETIX_CODEX=1`). Default Linux builds **do not** download unaudited binaries at package time. |
+| **System `codex` + `rg`** | Linux defaults to `USE_SYSTEM_CLI=1`: the build copies `codex` and `rg` from **your** `PATH` (or `CODEX_CLI_PATH` / `RG_CLI_PATH`) into the Electron bundle. You rebuild Desktop when you upgrade the system Codex CLI — one binary, one update channel. |
+| **Optional BYOK picker** | `USE_SHIM_MODEL_PICKER=1` patches the ASAR so [henry701/codex-shim](https://github.com/henry701/codex-shim) catalog models appear in Desktop's picker (off by default). |
+| **Arch packaging** | `packaging/arch/codex-desktop-bin/` wraps the prebuilt zip for local `makepkg -si` installs. |
+
+**Typical fork workflow (Linux x64)**
+
+```bash
+nvm use && npm ci
+npm run sync -- --skip-win
+# Ensure codex + rg on PATH (e.g. pacman/AUR openai-codex package)
+USE_SHIM_MODEL_PICKER=1 npm run build:linux-x64   # optional shim picker
+cd packaging/arch/codex-desktop-bin && makepkg -si
+```
+
+Pair with `codex-shim sync-desktop` if you route Desktop through BYOK models.
+
+---
 
 ## Supported Platforms
 
@@ -19,7 +55,9 @@ Cross-platform Electron build for OpenAI Codex Desktop App.
   nvm use
   ```
 
-- **Linux builds** — `codex` and `rg` on `PATH` (default behavior), plus `dpkg` and `fakeroot` for `.deb` artifacts.
+- **Linux builds** — `codex` and `rg` on `PATH` (default `USE_SYSTEM_CLI`; this fork's
+  preferred path), plus `dpkg` and `fakeroot` for `.deb` artifacts. Install or upgrade
+  your system Codex CLI before rebuilding so the bundled copy stays current.
 - **Upstream app bundle** — run `npm run sync` before the first build to fetch platform extracts into `src/`.
 
 ## Build
@@ -63,7 +101,9 @@ Flags are read from environment variables or CLI args on `prepare-src`, `patch-a
 
 Replace bundled `codex` / `rg` with prebuilt binaries from the third-party npm package [`@cometix/codex`](https://www.npmjs.com/package/@cometix/codex) ([Haleclipse/codex](https://github.com/Haleclipse/codex)).
 
-Opt-in only: binaries are fetched via `npm pack` at build time and are not built or audited in this repo.
+**This fork keeps this off by default.** Opt-in only: binaries are fetched via `npm pack`
+at build time and are not built or audited in this repo. Prefer `USE_SYSTEM_CLI` when you
+already install Codex from your distro or OpenAI's release channel.
 
 ```bash
 USE_COMETIX_CODEX=1 npm run build:linux-x64
@@ -76,9 +116,12 @@ Optional version pin: `USE_COMETIX_CODEX_VERSION=0.135.0-cometix`
 
 When Cometix is enabled, the archive-delete patch in `patch-archive-delete.js` also runs (required for that CLI).
 
-### `USE_SYSTEM_CLI` (Linux default: **on**)
+### `USE_SYSTEM_CLI` (Linux default: **on** — **fork preference**)
 
-Bundle `codex` and `rg` from the host `PATH` instead of the macOS upstream binaries (which cannot run on Linux). Cometix takes precedence when both are enabled.
+Bundle `codex` and `rg` from the host `PATH` instead of the macOS upstream binaries
+(which cannot run on Linux) or Cometix npm tarballs. At build time the resolved binaries
+are copied into `resources/` inside the zip; rebuild Desktop after upgrading your system
+`codex` package to pick up CLI changes. Cometix takes precedence when both are enabled.
 
 ```bash
 USE_SYSTEM_CLI=0 npm run build:linux-x64   # keep upstream macOS binaries (non-functional on Linux)
@@ -132,9 +175,15 @@ node scripts/verify-shim-picker-patch.js mac-x64
 
 ## Install on Arch Linux
 
-A local PKGBUILD wraps the prebuilt Linux zip (full Electron bundle, bundled `codex`/`rg` CLIs, no system Electron). The pacman package name is **`codex-desktop`**; the directory `packaging/arch/codex-desktop-bin/` uses the `-bin` suffix only as AUR convention for prebuilt packages.
+A local PKGBUILD wraps the prebuilt Linux zip (full Electron bundle, **no system Electron**).
+The pacman package name is **`codex-desktop`**; the directory `packaging/arch/codex-desktop-bin/`
+uses the `-bin` suffix only as AUR convention for prebuilt packages.
+
+Build the zip with **`codex` and `rg` on your PATH`** so `USE_SYSTEM_CLI` (Linux default)
+snapshots your distro/OpenAI CLI into the bundle — not Cometix npm artifacts.
 
 ```bash
+# codex + rg must resolve on PATH before build (e.g. openai-codex from AUR/pacman)
 npm run build:linux-x64
 cp out/make/zip/linux/x64/Codex-linux-x64-*.zip packaging/arch/codex-desktop-bin/
 cd packaging/arch/codex-desktop-bin
@@ -208,14 +257,22 @@ CI uses Node 24 (see `.nvmrc`), with the same `ensure-electron-dist` workaround 
 
 ## Git remotes
 
-This fork uses two remotes:
+| Remote | Repository | Role |
+|--------|------------|------|
+| `fork` | `henry701/CodexDesktop-Rebuild` | Primary push target for this fork |
+| `origin` | `Haleclipse/CodexDesktop-Rebuild` | Canonical upstream (Cometix Space) |
 
-| Remote | Repository |
-|--------|------------|
-| `fork` | `henry701/CodexDesktop-Rebuild` (primary push target) |
-| `origin` | `Haleclipse/CodexDesktop-Rebuild` (upstream) |
+`master` tracks `fork/master`. Push with `git push fork master`; merge upstream with
+`git fetch origin && git merge origin/master` (or rebase) when pulling Cometix changes.
 
-`master` tracks `fork/master`. Push with `git push fork master`; pull updates with `git pull fork master`.
+## Contributing
+
+**Upstream:** general cross-platform rebuild improvements belong in
+[Haleclipse/CodexDesktop-Rebuild](https://github.com/Haleclipse/CodexDesktop-Rebuild).
+
+**This fork:** issues/PRs here are for personal workflow (system CLI defaults, Arch
+packaging, shim-picker integration, supply-chain posture). No expectation of upstream
+cherry-picks.
 
 ## Credits
 
