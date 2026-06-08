@@ -24,6 +24,7 @@ const BASE_PATCHES = [
   "patch-i18n.js",
   "patch-copyright.js",
   "patch-devtools.js",
+  "patch-remove-menu.js",
   "patch-fast-mode.js",
   "patch-plugin-auth.js",
   "patch-updater.js",
