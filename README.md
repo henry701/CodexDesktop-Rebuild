@@ -166,6 +166,32 @@ npm run build:linux-x64:shim          # patch + build
 node scripts/verify-shim-picker-patch.js mac-x64
 ```
 
+### Menu bar suppression (Linux)
+
+Always-on `BASE_PATCH` (`patch-remove-menu.js`) that prevents the GTK/KDE global menu bar
+from appearing on Linux while preserving in-app File/Edit/View dropdowns.
+
+Upstream Codex Desktop only calls `win.removeMenu()` on Windows. On Linux (and most non-macOS
+platforms), `Menu.setApplicationMenu()` hands the menu to the OS via D-Bus — the resulting
+GTK/KDE menu bar is always visible and `setMenu(null)` per-window cannot override it.
+
+The patch makes three changes to the main-process bundle:
+
+1. **`removeMenu()` → `setMenu(null)`** — extends upstream's win32-only guard to all
+   non-macOS platforms.
+2. **Store menu instead of setting it on Linux** — replaces
+   `a.Menu.setApplicationMenu(st)` with `process.platform==='linux' ? (globalThis.__cm=st)
+   : a.Menu.setApplicationMenu(st)`. On Linux the menu goes into a global variable; on
+   macOS/Windows behavior is unchanged.
+3. **Fallback in IPC handler** — wraps `a.Menu.getApplicationMenu()` with
+   `(globalThis.__cm || a.Menu.getApplicationMenu())` so the in-app menu popup finds the
+   stored menu on Linux and falls through to the real application menu elsewhere.
+
+Verify with:
+```bash
+node scripts/patch-remove-menu.js mac-x64 --check
+```
+
 ## Other build notes
 
 - **`better-sqlite3`** — pinned to `vendor/better-sqlite3-12.10.0-electron42.tgz` until upstream ships Electron 42 V8 API support ([WiseLibs/better-sqlite3#1475](https://github.com/WiseLibs/better-sqlite3/pull/1475)).
@@ -239,7 +265,9 @@ npm run dev
 │   ├── cometix-vendor.js
 │   ├── system-cli.js
 │   ├── ensure-electron-dist.js
-│   └── patch-all.js
+│   ├── patch-all.js      # Runs all BASE_PATCHES in sequence
+│   ├── patch-remove-menu.js  # Suppress GTK/KDE menu bar on Linux
+│   ├── ...
 ├── vendor/              # better-sqlite3 Electron 42 tarball
 ├── packaging/
 │   └── arch/codex-desktop-bin/  # Arch PKGBUILD (prebuilt zip → pacman)
