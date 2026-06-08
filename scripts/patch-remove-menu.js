@@ -85,7 +85,7 @@ function main() {
         start: idx,
         end: idx + full.length,
         replacement:
-          `process.platform===`linux`?(globalThis.__cm=${menuArg}):${moduleVar}.Menu.setApplicationMenu(${menuArg})`,
+          `process.platform===\`linux\`?(globalThis.__cm=${menuArg}):${moduleVar}.Menu.setApplicationMenu(${menuArg})`,
         desc: `${full} -> linux-store/other-set`,
       });
     }
