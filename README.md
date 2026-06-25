@@ -159,6 +159,8 @@ CLI equivalents: `--use-system-cli`, `--no-system-cli`, `--use-cometix-codex`
 
 ASAR patch so Codex Desktop shows models from a [**codex-shim**](https://github.com/henry701/codex-shim) catalog (upstream: [0xSero/codex-shim](https://github.com/0xSero/codex-shim)). Requires `npm run sync` first. Scripts: `patch-shim-model-picker.js`, `verify-shim-picker-patch.js`.
 
+Patches: disable Statsig model allowlist, clear sidebar `modelProviders` filter, and paginate `model/list` until `nextCursor` is null (upstream only fetches the first 100 models).
+
 ```bash
 USE_SHIM_MODEL_PICKER=1 npm run patch:linux-x64
 npm run patch:linux-x64:shim-picker   # convenience alias

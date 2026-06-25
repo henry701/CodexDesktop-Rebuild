@@ -8,8 +8,8 @@
 # delete PKGBUILD, sources, and .SRCINFO. Use makepkg -si instead.
 
 pkgname=codex-desktop
-pkgver=26.602.40724
-pkgrel=3
+pkgver=26.623.30605
+pkgrel=1
 pkgdesc="OpenAI Codex Desktop — AI coding assistant (prebuilt Electron bundle)"
 arch=('x86_64')
 url="https://github.com/Haleclipse/CodexDesktop-Rebuild"
@@ -41,7 +41,7 @@ source=(
   "LICENSE"
   "LICENSE.electron"
 )
-sha256sums=('e24088de5a431584d937544c8b38e357af4e349bdd799cd490b63dd5e53fb342'
+sha256sums=('e1ece04b5065b506597f83e11ba5f41bc377b85a6924986ec838cbca218fba33'
             'a364838e5ad66e5c06248122afee90b650fd82cf8072fd5f6449de9ee28e4fd3'
              'cc90afd05859b8ada9210aafdc6cbba9ddb0dc5e26e656d78ec70166a8c4a937'
             '0c1d3bb97c171c06d0b3c8007433877497d63ef91e51562478530195d2448514'

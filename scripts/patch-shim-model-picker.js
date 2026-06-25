@@ -2,9 +2,9 @@
 /**
  * Post-build patch: expose codex-shim custom models in Desktop picker.
  *
- * Upstream moved the allowlist gate from model-queries-*.js to
- * models-and-reasoning-efforts-*.js (26.601+). Sidebar listRecentThreads may
- * already ship with modelProviders:[] — that patch is applied when still null.
+ * Upstream 26.623+ bundles model queries into shared chunks (no model-queries-*.js).
+ * Desktop fetches model/list once with limit ?? 100; this patch paginates until
+ * nextCursor is null so large BYOK catalogs (e.g. codex-shim) show every model.
  *
  * @see https://github.com/henry701/codex-shim
  */
@@ -13,23 +13,36 @@ const path = require("path");
 const { relPath, SRC_DIR } = require("./patch-util");
 
 const PICKER_NEEDLE =
-  "useHiddenModels:i}){let a=[],o=null,s=i&&e!==`amazonBedrock`;";
+  "useHiddenModels:o}){let s=[],c=null,l=o&&e!==`amazonBedrock`,";
 const PICKER_REPLACEMENT =
-  "useHiddenModels:i}){let a=[],o=null,s=!1;";
+  "useHiddenModels:o}){let s=[],c=null,l=!1,";
 
 const SIDEBAR_NEEDLE =
-  "listRecentThreads({cursor:e,limit:t}){return this.params.requestClient.sendRequest(`thread/list`,{limit:t,cursor:e,sortKey:this.recentConversationSortKey,modelProviders:null,archived:!1,sourceKinds:";
+  "listRecentThreads({cursor:e,limit:t,useStateDbOnly:n=!1}){let r={limit:t,cursor:e,sortKey:this.params.requestClient.getCompatibleThreadSortKey(this.recentConversationSortKey),modelProviders:null,archived:!1,sourceKinds:P,useStateDbOnly:n};return this.params.requestClient.sendRequ";
 const SIDEBAR_REPLACEMENT =
-  "listRecentThreads({cursor:e,limit:t}){return this.params.requestClient.sendRequest(`thread/list`,{limit:t,cursor:e,sortKey:this.recentConversationSortKey,modelProviders:[],archived:!1,sourceKinds:";
+  "listRecentThreads({cursor:e,limit:t,useStateDbOnly:n=!1}){let r={limit:t,cursor:e,sortKey:this.params.requestClient.getCompatibleThreadSortKey(this.recentConversationSortKey),modelProviders:[],archived:!1,sourceKinds:P,useStateDbOnly:n};return this.params.requestClient.sendRequ";
+
+const MODEL_QUERY_NEEDLE =
+  "queryFn:()=>Zc(`list-models-for-host`,{hostId:r,includeHidden:!0,cursor:null,limit:a})";
+const MODEL_QUERY_REPLACEMENT =
+  "queryFn:async()=>{let e=[],t=null,n=new Set;do{let i=await Zc(`list-models-for-host`,{hostId:r,includeHidden:!0,cursor:t,limit:a}),o=i.data,s=i.nextCursor;if(s!=null&&n.has(s))throw Error(`repeated model list cursor`);e.push(...o),s!=null&&n.add(s),t=s}while(t!=null);return{data:e}}";
+
+const MODEL_LOOKUP_NEEDLE =
+  "let{data:n}=await $l(`list-models-for-host`,{hostId:e,includeHidden:!0,cursor:null,limit:100});return t==null?n.find(e=>e.isDefault)??null:n.find(e=>e.model===t||e.id===t)??null";
+const MODEL_LOOKUP_REPLACEMENT =
+  "let n=[],r=null,i=new Set;do{let a=await $l(`list-models-for-host`,{hostId:e,includeHidden:!0,cursor:r,limit:100}),o=a.data,s=a.nextCursor;if(s!=null&&i.has(s))throw Error(`repeated model list cursor`);n.push(...o),s!=null&&i.add(s),r=s}while(r!=null);return t==null?n.find(e=>e.isDefault)??null:n.find(e=>e.model===t||e.id===t)??null";
 
 function assetsDir(platform) {
   return path.join(SRC_DIR, platform, "_asar", "webview", "assets");
 }
 
-function findAssetFile(dir, pattern) {
-  if (!fs.existsSync(dir)) return null;
-  const name = fs.readdirSync(dir).find((f) => pattern.test(f));
-  return name ? path.join(dir, name) : null;
+function findAssetFilesByNeedle(dir, needle) {
+  if (!fs.existsSync(dir)) return [];
+  return fs
+    .readdirSync(dir)
+    .filter((f) => f.endsWith(".js"))
+    .map((f) => path.join(dir, f))
+    .filter((filePath) => fs.readFileSync(filePath, "utf8").includes(needle));
 }
 
 function replaceOnce(source, needle, replacement) {
@@ -65,30 +78,24 @@ function patchFile(bundlePath, patchId, needle, replacement, dryRun, { required 
   return true;
 }
 
-function patchSidebarPrefix(dir, dryRun) {
-  const bundlePath = findAssetFile(dir, /^app-server-manager-signals-.*\.js$/);
-  if (!bundlePath) {
-    console.log("  [skip] app-server-manager-signals-*.js not found");
-    return true;
-  }
-  const source = fs.readFileSync(bundlePath, "utf8");
-  const idx = source.indexOf(SIDEBAR_NEEDLE);
-  if (idx === -1) {
-    if (source.includes("listRecentThreads") && source.includes("modelProviders:[],")) {
-      console.log(`  [ok] ${relPath(bundlePath)}: sidebar already uses modelProviders:[]`);
+function patchNeedleInDir(dir, patchId, needle, replacement, dryRun, { required = false } = {}) {
+  const files = findAssetFilesByNeedle(dir, needle);
+  if (files.length === 0) {
+    const already = findAssetFilesByNeedle(dir, replacement);
+    if (already.length > 0) {
+      for (const filePath of already) {
+        console.log(`  [ok] ${relPath(filePath)}: ${patchId} already applied`);
+      }
       return true;
     }
-    console.log(`  [skip] ${relPath(bundlePath)}: sidebar listRecentThreads needle not found`);
-    return true;
+    console.log(`  ${required ? "[!]" : "[skip]"} ${patchId}: no bundle contains needle`);
+    return !required;
   }
-  const tailIdx = source.indexOf("})", idx + SIDEBAR_NEEDLE.length);
-  if (tailIdx === -1) {
-    console.log(`  [!] ${relPath(bundlePath)}: could not close sidebar needle`);
+  if (files.length > 1) {
+    console.log(`  [!] ${patchId}: needle matched ${files.length} bundles`);
     return false;
   }
-  const needle = source.slice(idx, tailIdx + 1);
-  const replacement = needle.replace("modelProviders:null", "modelProviders:[]");
-  return patchFile(bundlePath, "sidebar-provider-filter", needle, replacement, dryRun);
+  return patchFile(files[0], patchId, needle, replacement, dryRun, { required });
 }
 
 function main() {
@@ -104,16 +111,28 @@ function main() {
 
   let ok = true;
 
-  const pickerPath = findAssetFile(dir, /^models-and-reasoning-efforts-.*\.js$/);
-  if (!pickerPath) {
-    console.log("  [!] models-and-reasoning-efforts-*.js not found");
+  if (
+    !patchNeedleInDir(dir, "model-picker-allowlist", PICKER_NEEDLE, PICKER_REPLACEMENT, dryRun, {
+      required: true,
+    })
+  ) {
     ok = false;
-  } else if (
-    !patchFile(
-      pickerPath,
-      "model-picker-allowlist",
-      PICKER_NEEDLE,
-      PICKER_REPLACEMENT,
+  }
+
+  if (
+    !patchNeedleInDir(dir, "model-list-pagination", MODEL_QUERY_NEEDLE, MODEL_QUERY_REPLACEMENT, dryRun, {
+      required: true,
+    })
+  ) {
+    ok = false;
+  }
+
+  if (
+    !patchNeedleInDir(
+      dir,
+      "model-list-lookup-pagination",
+      MODEL_LOOKUP_NEEDLE,
+      MODEL_LOOKUP_REPLACEMENT,
       dryRun,
       { required: true },
     )
@@ -121,7 +140,11 @@ function main() {
     ok = false;
   }
 
-  if (!patchSidebarPrefix(dir, dryRun)) ok = false;
+  if (
+    !patchNeedleInDir(dir, "sidebar-provider-filter", SIDEBAR_NEEDLE, SIDEBAR_REPLACEMENT, dryRun)
+  ) {
+    ok = false;
+  }
 
   if (!ok) process.exit(1);
 }

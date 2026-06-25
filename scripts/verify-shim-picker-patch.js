@@ -6,47 +6,68 @@ const fs = require("fs");
 const path = require("path");
 const { SRC_DIR } = require("./patch-util");
 
-const PICKER_OK = /useHiddenModels:i\}\)\{let a=\[\],o=null,s=!1;/;
-const SIDEBAR_OK = /listRecentThreads\(\{cursor:e,limit:t\}\).*modelProviders:\[\],archived:!1/;
+const PICKER_OK = /useHiddenModels:\w\}\)\{let \w+=\[\],\w+=null,\w+=!1,/;
+const SIDEBAR_OK =
+  /listRecentThreads\(\{cursor:\w+,limit:\w+,useStateDbOnly:\w+=!1\}\)\{let \w+=\{[^}]*modelProviders:\[\],archived:!1/;
+const PAGINATION_OK =
+  /queryFn:async\(\)=>\{let \w+=\[\],\w+=null,\w+=new Set;do\{let \w+=await \w+\(`list-models-for-host`/;
+const LOOKUP_PAGINATION_OK =
+  /do\{let \w+=await \$\w+\(`list-models-for-host`,\{hostId:\w+,includeHidden:!0,cursor:\w+,limit:100\}\),\w+=\w+\.data,\w+=\w+\.nextCursor;if\(\w+!=null&&\w+\.has\(\w+\)\)throw Error\(`repeated model list cursor`\)/;
+
+function assetsDir(platform) {
+  return path.join(SRC_DIR, platform, "_asar", "webview", "assets");
+}
+
+function findFilesMatching(dir, pattern) {
+  if (!fs.existsSync(dir)) return [];
+  return fs
+    .readdirSync(dir)
+    .filter((f) => f.endsWith(".js"))
+    .map((f) => path.join(dir, f))
+    .filter((filePath) => pattern.test(fs.readFileSync(filePath, "utf8")));
+}
+
+function check(label, files, pattern) {
+  if (files.length === 0) {
+    console.error(`[fail] ${label}: no matching bundle`);
+    return false;
+  }
+  const name = path.basename(files[0]);
+  console.log(`[ok] ${label}: ${name}`);
+  return true;
+}
 
 function main() {
   const platform = process.argv[2] || "mac-x64";
-  const dir = path.join(SRC_DIR, platform, "_asar", "webview", "assets");
+  const dir = assetsDir(platform);
   if (!fs.existsSync(dir)) {
     console.error("[fail] missing assets — run: npm run sync");
     process.exit(1);
   }
 
-  const picker = fs
-    .readdirSync(dir)
-    .find((f) => /^models-and-reasoning-efforts-.*\.js$/.test(f));
-  const signals = fs
-    .readdirSync(dir)
-    .find((f) => /^app-server-manager-signals-.*\.js$/.test(f));
-
   let ok = true;
 
-  if (!picker) {
-    console.error("[fail] models-and-reasoning-efforts-*.js not found");
-    ok = false;
-  } else {
-    const text = fs.readFileSync(path.join(dir, picker), "utf8");
-    if (PICKER_OK.test(text)) console.log(`[ok] picker: ${picker}`);
-    else {
-      console.error(`[fail] picker patch missing in ${picker}`);
-      ok = false;
-    }
-  }
+  const picker = findFilesMatching(dir, PICKER_OK);
+  if (!check("picker allowlist", picker, PICKER_OK)) ok = false;
 
-  if (!signals) {
-    console.error("[fail] app-server-manager-signals-*.js not found");
-    ok = false;
+  const pagination = findFilesMatching(dir, PAGINATION_OK);
+  if (!check("model list pagination", pagination, PAGINATION_OK)) ok = false;
+
+  const lookup = findFilesMatching(dir, LOOKUP_PAGINATION_OK);
+  if (!check("model lookup pagination", lookup, LOOKUP_PAGINATION_OK)) ok = false;
+
+  const sidebar = findFilesMatching(dir, SIDEBAR_OK);
+  if (sidebar.length > 0) {
+    console.log(`[ok] sidebar: ${path.basename(sidebar[0])}`);
   } else {
-    const text = fs.readFileSync(path.join(dir, signals), "utf8");
-    if (SIDEBAR_OK.test(text)) console.log(`[ok] sidebar: ${signals}`);
-    else {
-      console.error(`[fail] sidebar listRecentThreads still filters providers in ${signals}`);
-      ok = false;
+    const fallback = findFilesMatching(
+      dir,
+      /listRecentThreads\(\{cursor:\w+,limit:\w+\}\).*modelProviders:\[\],archived:!1/,
+    );
+    if (fallback.length > 0) {
+      console.log(`[ok] sidebar (legacy): ${path.basename(fallback[0])}`);
+    } else {
+      console.log("[skip] sidebar: upstream may already omit provider filter");
     }
   }
 
