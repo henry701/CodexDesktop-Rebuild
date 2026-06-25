@@ -1,7 +1,7 @@
 {
   "name": "codex-rebuild",
   "productName": "Codex",
-  "version": "26.602.40724",
+  "version": "26.616.81150",
   "description": "Codex Electron App - Cross-platform Build",
   "engines": {
     "node": ">=24 <25"
