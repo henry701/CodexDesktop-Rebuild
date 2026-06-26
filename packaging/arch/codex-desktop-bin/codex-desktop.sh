@@ -1,17 +1,19 @@
 #!/bin/sh
-# Electron 38+ defaults to native Wayland on Wayland sessions; that regresses
-# Codex sidebar repaint on KDE. XWayland + no GPU compositing is stable.
+# On Wayland sessions, prefer native Wayland (matches Cursor and avoids KDE/XWayland
+# drag/taskbar regressions on Electron 42+). XWayland remains available via override.
 args="--no-sandbox --disable-gpu-compositing"
 
 # CODEX_OZONE_PLATFORM overrides the default platform choice.
-# Set to "wayland" to test native Wayland, "x11" to force XWayland,
-# or "auto" to let Electron decide (Electron 38+ prefers Wayland on Wayland sessions).
-# Unset/empty = force X11 on Wayland (stable for KDE sidebar repaint).
+#   wayland — native Wayland (default on Wayland sessions)
+#   x11     — force XWayland (legacy KDE sidebar repaint workaround)
+#   auto    — omit --ozone-platform; let Electron decide
 ozone="${CODEX_OZONE_PLATFORM:-}"
 if [ -z "$ozone" ]; then
   if [ "${XDG_SESSION_TYPE:-}" = wayland ] || [ -n "${WAYLAND_DISPLAY:-}" ]; then
-    ozone=x11
+    ozone=wayland
   fi
+elif [ "$ozone" = auto ]; then
+  ozone=
 fi
 [ -n "$ozone" ] && args="$args --ozone-platform=$ozone"
 

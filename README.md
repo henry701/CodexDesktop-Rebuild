@@ -234,7 +234,7 @@ Installs:
 | Path | Purpose |
 |------|---------|
 | `/usr/lib/codex-desktop/` | Full Electron bundle |
-| `/usr/bin/codex-desktop` | Launcher (`--no-sandbox`) |
+| `/usr/bin/codex-desktop` | Launcher (`--no-sandbox`; native Wayland when `XDG_SESSION_TYPE=wayland`) |
 | `/usr/share/applications/codex-desktop.desktop` | Application menu entry |
 | `/usr/share/icons/hicolor/256x256/apps/codex-desktop.png` | Icon |
 
@@ -243,6 +243,8 @@ Runtime dependencies are declared in the PKGBUILD (`gtk3`, `nss`, `mesa`, etc.).
 **Recommended alongside:** [henry701/codex-shim](https://github.com/henry701/codex-shim) routes Codex Desktop through OpenCode and third-party models (Cursor, OpenCode free tier, NVIDIA NIM, etc.). Install with `uv tool install git+https://github.com/henry701/codex-shim`, run `codex-shim sync-desktop`, then optionally rebuild Desktop with `USE_SHIM_MODEL_PICKER=1` so the in-app model picker lists your shim catalog.
 
 Launch from the menu or run `codex-desktop`.
+
+On Plasma/Wayland the launcher defaults to `--ozone-platform=wayland`. If an older KDE sidebar repaint issue returns, use `CODEX_OZONE_PLATFORM=x11 codex-desktop` for XWayland.
 
 ## Development
 
