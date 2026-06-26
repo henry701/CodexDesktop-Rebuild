@@ -2,9 +2,10 @@
 /**
  * Post-build patch: expose codex-shim custom models in Desktop picker.
  *
- * Upstream 26.623+ bundles model queries into shared chunks (no model-queries-*.js).
- * Desktop fetches model/list once with limit ?? 100; this patch paginates until
- * nextCursor is null so large BYOK catalogs (e.g. codex-shim) show every model.
+ *   26.623+: shared webpack chunks (Zc / $l call sites)
+ *
+ * Base pagination lives in patch-model-list-pagination.js (always applied).
+ * This script adds shim-only allowlist + sidebar patches when USE_SHIM_MODEL_PICKER=1.
  *
  * @see https://github.com/henry701/codex-shim
  */
@@ -21,16 +22,6 @@ const SIDEBAR_NEEDLE =
   "listRecentThreads({cursor:e,limit:t,useStateDbOnly:n=!1}){let r={limit:t,cursor:e,sortKey:this.params.requestClient.getCompatibleThreadSortKey(this.recentConversationSortKey),modelProviders:null,archived:!1,sourceKinds:P,useStateDbOnly:n};return this.params.requestClient.sendRequ";
 const SIDEBAR_REPLACEMENT =
   "listRecentThreads({cursor:e,limit:t,useStateDbOnly:n=!1}){let r={limit:t,cursor:e,sortKey:this.params.requestClient.getCompatibleThreadSortKey(this.recentConversationSortKey),modelProviders:[],archived:!1,sourceKinds:P,useStateDbOnly:n};return this.params.requestClient.sendRequ";
-
-const MODEL_QUERY_NEEDLE =
-  "queryFn:()=>Zc(`list-models-for-host`,{hostId:r,includeHidden:!0,cursor:null,limit:a})";
-const MODEL_QUERY_REPLACEMENT =
-  "queryFn:async()=>{let e=[],t=null,n=new Set;do{let i=await Zc(`list-models-for-host`,{hostId:r,includeHidden:!0,cursor:t,limit:a}),o=i.data,s=i.nextCursor;if(s!=null&&n.has(s))throw Error(`repeated model list cursor`);e.push(...o),s!=null&&n.add(s),t=s}while(t!=null);return{data:e}}";
-
-const MODEL_LOOKUP_NEEDLE =
-  "let{data:n}=await $l(`list-models-for-host`,{hostId:e,includeHidden:!0,cursor:null,limit:100});return t==null?n.find(e=>e.isDefault)??null:n.find(e=>e.model===t||e.id===t)??null";
-const MODEL_LOOKUP_REPLACEMENT =
-  "let n=[],r=null,i=new Set;do{let a=await $l(`list-models-for-host`,{hostId:e,includeHidden:!0,cursor:r,limit:100}),o=a.data,s=a.nextCursor;if(s!=null&&i.has(s))throw Error(`repeated model list cursor`);n.push(...o),s!=null&&i.add(s),r=s}while(r!=null);return t==null?n.find(e=>e.isDefault)??null:n.find(e=>e.model===t||e.id===t)??null";
 
 function assetsDir(platform) {
   return path.join(SRC_DIR, platform, "_asar", "webview", "assets");
@@ -115,27 +106,6 @@ function main() {
     !patchNeedleInDir(dir, "model-picker-allowlist", PICKER_NEEDLE, PICKER_REPLACEMENT, dryRun, {
       required: true,
     })
-  ) {
-    ok = false;
-  }
-
-  if (
-    !patchNeedleInDir(dir, "model-list-pagination", MODEL_QUERY_NEEDLE, MODEL_QUERY_REPLACEMENT, dryRun, {
-      required: true,
-    })
-  ) {
-    ok = false;
-  }
-
-  if (
-    !patchNeedleInDir(
-      dir,
-      "model-list-lookup-pagination",
-      MODEL_LOOKUP_NEEDLE,
-      MODEL_LOOKUP_REPLACEMENT,
-      dryRun,
-      { required: true },
-    )
   ) {
     ok = false;
   }
