@@ -194,6 +194,25 @@ Verify with:
 node scripts/patch-remove-menu.js mac-x64 --check
 ```
 
+### Linux window chrome (`patch-linux-chrome.js`)
+
+Always-on `BASE_PATCH` for native Wayland on KDE:
+
+1. **Integrated titlebar** — primary window on Linux uses `titleBarStyle: hidden` +
+   `titleBarOverlay` (same as Windows) instead of SSD `default`.
+2. **Opaque surfaces** — Linux gets the same `backgroundColor` path as win32/darwin when
+   opaque windows are enabled, including `M2`/`N2` gating for `applyWindowBackdrop` (sidebar).
+
+Pair with the Arch launcher: **XWayland default** on Wayland sessions (`--ozone-platform=x11`
++ `--disable-gpu-compositing`, commit `fb601df`) for stable sidebar repaint. Native Wayland:
+`CODEX_OZONE_PLATFORM=wayland` (better taskbar/drag; needs `patch-linux-chrome.js` for opaque
+sidebar). Opt out of compositing disable: `CODEX_DISABLE_GPU=0`.
+
+Verify with:
+```bash
+node scripts/patch-linux-chrome.js mac-x64 --check
+```
+
 ## Other build notes
 
 - **`better-sqlite3`** — pinned to `vendor/better-sqlite3-12.10.0-electron42.tgz` until upstream ships Electron 42 V8 API support ([WiseLibs/better-sqlite3#1475](https://github.com/WiseLibs/better-sqlite3/pull/1475)).
@@ -234,7 +253,7 @@ Installs:
 | Path | Purpose |
 |------|---------|
 | `/usr/lib/codex-desktop/` | Full Electron bundle |
-| `/usr/bin/codex-desktop` | Launcher (`--no-sandbox`; native Wayland when `XDG_SESSION_TYPE=wayland`) |
+| `/usr/bin/codex-desktop` | Launcher (Claude-aligned Wayland + KDE compositing defaults) |
 | `/usr/share/applications/codex-desktop.desktop` | Application menu entry |
 | `/usr/share/icons/hicolor/256x256/apps/codex-desktop.png` | Icon |
 
@@ -242,9 +261,16 @@ Runtime dependencies are declared in the PKGBUILD (`gtk3`, `nss`, `mesa`, etc.).
 
 **Recommended alongside:** [henry701/codex-shim](https://github.com/henry701/codex-shim) routes Codex Desktop through OpenCode and third-party models (Cursor, OpenCode free tier, NVIDIA NIM, etc.). Install with `uv tool install git+https://github.com/henry701/codex-shim`, run `codex-shim sync-desktop`, then optionally rebuild Desktop with `USE_SHIM_MODEL_PICKER=1` so the in-app model picker lists your shim catalog.
 
-Launch from the menu or run `codex-desktop`.
+Launch from the menu or run `codex-desktop`. **Default on Plasma Wayland is XWayland**
+(`--ozone-platform=x11` + `--disable-gpu-compositing`) for stable sidebar repaint. Native
+Wayland: `CODEX_OZONE_PLATFORM=wayland` (IME flags included). Pin **`26.602.40724`**.
 
-On Plasma/Wayland the launcher defaults to `--ozone-platform=wayland`. If an older KDE sidebar repaint issue returns, use `CODEX_OZONE_PLATFORM=x11 codex-desktop` for XWayland.
+| Goal | Command |
+|------|---------|
+| XWayland (default on Plasma) | `codex-desktop` |
+| Native Wayland | `CODEX_OZONE_PLATFORM=wayland codex-desktop` |
+| Enable GPU compositing | `CODEX_DISABLE_GPU=0 codex-desktop` |
+| Install last known-good build | `sudo pacman -U packaging/arch/codex-desktop-bin/codex-desktop-26.602.40724-3-x86_64.pkg.tar.zst` |
 
 ## Development
 

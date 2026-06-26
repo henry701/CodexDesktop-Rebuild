@@ -1,4 +1,5 @@
 # Codex Desktop — prebuilt Electron bundle (local zip or GitHub release).
+# KDE Plasma Wayland: pin pkgver=26.602.40724 until 26.623+ pet-overlay keyboard bug is fixed upstream.
 # Build the zip first: npm run build:linux-x64
 # Optional: USE_SHIM_MODEL_PICKER=1 when building zip (patch-shim-model-picker.js)
 # Recommended alongside: https://github.com/henry701/codex-shim (multi-model routing via OpenCode)
