@@ -158,7 +158,9 @@ module.exports = {
         "codexTemplate.png", "codexTemplate@2x.png",
         "app.asar", "codex-notification.wav",
       ]);
-      const MACOS_ONLY_DIRS = new Set(["native", "app.asar.unpacked"]);
+      // cua_node ships Mach-O node/node_repl (apple-darwin); useless on Linux and
+      // causes Codex CLI "Exec format error" if wired as mcp_servers.node_repl.
+      const MACOS_ONLY_DIRS = new Set(["native", "app.asar.unpacked", "cua_node"]);
       if (isLinux) {
         for (const f of MACOS_ONLY_FILES) skip.add(f);
         for (const d of MACOS_ONLY_DIRS) skip.add(d);
