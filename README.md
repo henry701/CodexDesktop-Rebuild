@@ -28,10 +28,12 @@ channels.
 
 ```bash
 nvm use && npm ci
-npm run sync -- --skip-win
+npm run sync -- --skip-win          # pulls upstream; prunes /tmp/codex-sync + old packaging zips/pkgs
 # Ensure codex + rg on PATH (e.g. pacman/AUR openai-codex package)
-USE_SHIM_MODEL_PICKER=1 npm run build:linux-x64   # optional shim picker
+USE_SHIM_MODEL_PICKER=1 npm run build:linux-x64
+cp out/make/zip/linux/x64/Codex-linux-x64-*.zip packaging/arch/codex-desktop-bin/
 cd packaging/arch/codex-desktop-bin && makepkg -si
+# Optional: npm run prune:artifacts   (KEEP_VERSIONS=3 default; also runs at end of sync)
 ```
 
 Pair with `codex-shim sync-desktop` if you route Desktop through BYOK models.
@@ -232,13 +234,17 @@ snapshots your distro/OpenAI CLI into the bundle — not Cometix npm artifacts.
 
 ```bash
 # codex + rg must resolve on PATH before build (e.g. openai-codex from AUR/pacman)
-npm run build:linux-x64
+USE_SHIM_MODEL_PICKER=1 npm run build:linux-x64
 cp out/make/zip/linux/x64/Codex-linux-x64-*.zip packaging/arch/codex-desktop-bin/
 cd packaging/arch/codex-desktop-bin
 # bump pkgver/pkgrel in PKGBUILD when the version changes
 updpkgsums
 makepkg -si
 ```
+
+`npm run sync` and `npm run prune:artifacts` keep the newest **3** app versions of
+`Codex-linux-x64-*.zip` / `codex-desktop-*-x86_64.pkg.tar.zst` under the packaging dir,
+drop makepkg `src/`/`pkg/`, and clear `/tmp/codex-sync` download leftovers.
 
 To rebuild without reinstalling:
 
@@ -264,14 +270,14 @@ Runtime dependencies are declared in the PKGBUILD (`gtk3`, `nss`, `mesa`, etc.).
 
 Launch from the menu or run `codex-desktop`. **Default on Plasma Wayland is XWayland**
 (`--ozone-platform=x11` + `--disable-gpu-compositing`) for stable sidebar repaint. Native
-Wayland: `CODEX_OZONE_PLATFORM=wayland` (IME flags included). Pin **`26.602.40724`**.
+Wayland: `CODEX_OZONE_PLATFORM=wayland` (IME flags included).
 
 | Goal | Command |
 |------|---------|
 | XWayland (default on Plasma) | `codex-desktop` |
 | Native Wayland | `CODEX_OZONE_PLATFORM=wayland codex-desktop` |
 | Enable GPU compositing | `CODEX_DISABLE_GPU=0 codex-desktop` |
-| Install last known-good build | `sudo pacman -U packaging/arch/codex-desktop-bin/codex-desktop-26.602.40724-3-x86_64.pkg.tar.zst` |
+| Install previous kept build | `sudo pacman -U packaging/arch/codex-desktop-bin/codex-desktop-*-x86_64.pkg.tar.zst` |
 
 ## Development
 

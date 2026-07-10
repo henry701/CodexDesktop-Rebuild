@@ -20,7 +20,10 @@ const ROOT_PKG = path.join(__dirname, "..", "package.json");
 const SRC_DIR = path.join(__dirname, "..", "src");
 
 function findUpstreamPkg() {
-  for (const plat of ["unix", "win"]) {
+  // Prefer freshly synced ASAR package.json (mac-x64 is the Linux build source).
+  for (const plat of ["mac-x64", "mac-arm64", "unix", "win"]) {
+    const asarPkg = path.join(SRC_DIR, plat, "_asar", "package.json");
+    if (fs.existsSync(asarPkg)) return asarPkg;
     const p = path.join(SRC_DIR, plat, "package.json");
     if (fs.existsSync(p)) return p;
   }

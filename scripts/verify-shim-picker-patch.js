@@ -7,12 +7,12 @@ const path = require("path");
 const { SRC_DIR } = require("./patch-util");
 
 const PICKER_OK = /useHiddenModels:\w\}\)\{let \w+=\[\],\w+=null,\w+=!1,/;
-const SIDEBAR_OK =
-  /listRecentThreads\(\{cursor:\w+,limit:\w+,useStateDbOnly:\w+=!1\}\)\{let \w+=\{[^}]*modelProviders:\[\],archived:!1/;
 const PAGINATION_OK =
   /queryFn:async\(\)=>\{let \w+=\[\],\w+=null,\w+=new Set;do\{let \w+=await \w+\(`list-models-for-host`/;
 const LOOKUP_PAGINATION_OK =
-  /do\{let \w+=await \$\w+\(`list-models-for-host`,\{hostId:\w+,includeHidden:!0,cursor:\w+,limit:100\}\),\w+=\w+\.data,\w+=\w+\.nextCursor;if\(\w+!=null&&\w+\.has\(\w+\)\)throw Error\(`repeated model list cursor`\)/;
+  /do\{let \w+=await \$?\w+\(`list-models-for-host`,\{hostId:\w+,includeHidden:!0,cursor:\w+,limit:100(?:,priority:`critical`)?\}\),\w+=\w+\.data,\w+=\w+\.nextCursor;if\(\w+!=null&&\w+\.has\(\w+\)\)throw Error\(`repeated model list cursor`\)/;
+const SIDEBAR_OK =
+  /listRecentThreads\(\{cursor:\w+,limit:\w+,useStateDbOnly:\w+=!1(?:,background:\w+=!1)?\}\)\{let \w+=\{[^}]*modelProviders:\[\],archived:!1/;
 
 function assetsDir(platform) {
   return path.join(SRC_DIR, platform, "_asar", "webview", "assets");

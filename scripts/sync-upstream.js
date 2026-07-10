@@ -321,6 +321,13 @@ async function main() {
   }
   saveVersions(saved);
 
+  // Drop download/extract leftovers under os.tmpdir()/codex-sync (src/ keeps the ASAR).
+  try {
+    execSync(`node "${path.join(__dirname, "prune-artifacts.js")}"`, { stdio: "inherit" });
+  } catch (e) {
+    console.warn(`   [!] prune-artifacts: ${e.message}`);
+  }
+
   console.log("\n== Done ==");
   for (const [key, info] of Object.entries(results)) {
     console.log(`   ${key}: ${info.version}`);

@@ -152,13 +152,16 @@ function main() {
   }
 
   const upstreamPkg = path.join(asarContentDir, "package.json");
+  let upstreamMain = ".vite/build/early-bootstrap.js";
   if (fs.existsSync(upstreamPkg)) {
     const upstream = JSON.parse(fs.readFileSync(upstreamPkg, "utf-8"));
     const rootPkgPath = path.join(PROJECT_ROOT, "package.json");
     const rootPkg = JSON.parse(fs.readFileSync(rootPkgPath, "utf-8"));
     const oldVer = rootPkg.version;
     rootPkg.version = upstream.version || rootPkg.version;
-    rootPkg.main = "src/.vite/build/bootstrap.js";
+    // 26.623 used bootstrap.js; 26.707+ uses early-bootstrap.js — follow upstream.
+    upstreamMain = (upstream.main || upstreamMain).replace(/^\.\//, "");
+    rootPkg.main = path.posix.join("src", upstreamMain);
     for (const key of [
       "codexBuildNumber", "codexBuildFlavor",
       "codexSparkleFeedUrl", "codexSparklePublicKey",
@@ -169,12 +172,14 @@ function main() {
     }
     fs.writeFileSync(rootPkgPath, JSON.stringify(rootPkg, null, 2) + "\n");
     console.log(`   version: ${oldVer} -> ${rootPkg.version}`);
+    console.log(`   main: ${rootPkg.main}`);
   }
 
   if (!isLinux) {
     const stubDir = path.join(SRC, ".vite", "build");
     fs.mkdirSync(stubDir, { recursive: true });
-    fs.writeFileSync(path.join(stubDir, "bootstrap.js"), "// stub - real code in app.asar\n");
+    const stubName = path.basename(upstreamMain) || "early-bootstrap.js";
+    fs.writeFileSync(path.join(stubDir, stubName), "// stub - real code in app.asar\n");
     const asarPkg = path.join(asarContentDir, "package.json");
     if (fs.existsSync(asarPkg)) {
       fs.copyFileSync(asarPkg, path.join(SRC, "package.json"));

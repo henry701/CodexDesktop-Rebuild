@@ -1,5 +1,5 @@
 # Codex Desktop — prebuilt Electron bundle (local zip or GitHub release).
-# KDE Plasma Wayland: pin pkgver=26.602.40724 until 26.623+ pet-overlay keyboard bug is fixed upstream.
+# Built from CodexDesktop-Rebuild linux-x64 zip (see repo README).
 # Build the zip first: npm run build:linux-x64
 # Optional: USE_SHIM_MODEL_PICKER=1 when building zip (patch-shim-model-picker.js)
 # Recommended alongside: https://github.com/henry701/codex-shim (multi-model routing via OpenCode)
@@ -9,7 +9,7 @@
 # delete PKGBUILD, sources, and .SRCINFO. Use makepkg -si instead.
 
 pkgname=codex-desktop
-pkgver=26.623.30605
+pkgver=26.707.31428
 pkgrel=1
 pkgdesc="OpenAI Codex Desktop — AI coding assistant (prebuilt Electron bundle)"
 arch=('x86_64')
@@ -42,9 +42,9 @@ source=(
   "LICENSE"
   "LICENSE.electron"
 )
-sha256sums=('e1ece04b5065b506597f83e11ba5f41bc377b85a6924986ec838cbca218fba33'
+sha256sums=('42963ba27f27da116fc5ae2a670ce42b071c2f8943fa85e473be9aa7605bf5d8'
             'a364838e5ad66e5c06248122afee90b650fd82cf8072fd5f6449de9ee28e4fd3'
-             'cc90afd05859b8ada9210aafdc6cbba9ddb0dc5e26e656d78ec70166a8c4a937'
+            'c7a51c7e1225c44ab387fd2a65075dcf24a8429bbd9d1304b540220ca35f3e94'
             '0c1d3bb97c171c06d0b3c8007433877497d63ef91e51562478530195d2448514'
             'e7dba96daee2da29812f761d25e2a32cdbb7f20a44fe0450cde2ba1f7e291877'
             '5154e165bd6c2cc0cfbcd8916498c7abab0497923bafcd5cb07673fe8480087d')

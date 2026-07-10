@@ -1,12 +1,12 @@
 {
   "name": "codex-rebuild",
   "productName": "Codex",
-  "version": "26.623.30605",
+  "version": "26.707.31428",
   "description": "Codex Electron App - Cross-platform Build",
   "engines": {
     "node": ">=24 <25"
   },
-  "main": "src/.vite/build/bootstrap.js",
+  "main": "src/.vite/build/early-bootstrap.js",
   "scripts": {
     "start": "node scripts/start-dev.js",
     "dev": "node scripts/start-dev.js",
@@ -39,6 +39,7 @@
     "sync": "node scripts/sync-upstream.js",
     "check-update": "node scripts/check-update.js",
     "bump-version": "node scripts/bump-version.js",
+    "prune:artifacts": "node scripts/prune-artifacts.js",
     "rebuild:native": "electron-rebuild",
     "postinstall": "node scripts/ensure-electron-dist.js"
   },
@@ -77,7 +78,7 @@
     "zod": "^4.1.13"
   },
   "codexBuildFlavor": "prod",
-  "codexBuildNumber": "4415",
+  "codexBuildNumber": "5059",
   "codexSparkleFeedUrl": "https://persistent.oaistatic.com/codex-app-prod/appcast-x64.xml",
   "codexSparklePublicKey": "mNfr1v9t63BfgDtlw4C8lRvSY6uMggIXABDOCi3tS6k="
 }

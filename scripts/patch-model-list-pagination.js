@@ -3,9 +3,9 @@
  * Paginate model/list past upstream's single-page limit (100 models).
  * Required for large codex-shim catalogs in the Desktop model picker.
  *
- * Supports upstream bundle layouts:
- *   - 26.602.x: model-queries-*.js + read-service-tier-*.js
- *   - 26.623+: shared webpack chunks (Zc / $l call sites)
+ * Uses regex patterns so minified callee/local names can change across
+ * upstream drops (26.602 / 26.623 / 26.707+). Prefer structural matches
+ * over hard-coded identifier lists.
  *
  * Usage:
  *   node scripts/patch-model-list-pagination.js [platform]
@@ -16,40 +16,32 @@ const fs = require("fs");
 const path = require("path");
 const { relPath, SRC_DIR } = require("./patch-util");
 
-const RULES = [
-  {
-    id: "602-model-queries-list",
-    needle:
-      "queryFn:()=>i(`list-models-for-host`,{hostId:a,includeHidden:!0,cursor:null,limit:s})",
-    replacement:
-      "queryFn:async()=>{let e=[],t=null,n=new Set;do{let r=await i(`list-models-for-host`,{hostId:a,includeHidden:!0,cursor:t,limit:s}),o=r.data,c=r.nextCursor;if(c!=null&&n.has(c))throw Error(`repeated model list cursor`);e.push(...o),c!=null&&n.add(c),t=c}while(t!=null);return{data:e}}",
-    group: "query",
-  },
-  {
-    id: "623-model-query-list",
-    needle:
-      "queryFn:()=>Zc(`list-models-for-host`,{hostId:r,includeHidden:!0,cursor:null,limit:a})",
-    replacement:
-      "queryFn:async()=>{let e=[],t=null,n=new Set;do{let i=await Zc(`list-models-for-host`,{hostId:r,includeHidden:!0,cursor:t,limit:a}),o=i.data,s=i.nextCursor;if(s!=null&&n.has(s))throw Error(`repeated model list cursor`);e.push(...o),s!=null&&n.add(s),t=s}while(t!=null);return{data:e}}",
-    group: "query",
-  },
-  {
-    id: "602-model-lookup",
-    needle:
-      "let{data:r}=await t(`list-models-for-host`,{hostId:e,includeHidden:!0,cursor:null,limit:100});return n==null?r.find(e=>e.isDefault)??null:r.find(e=>e.model===n||e.id===n)??null",
-    replacement:
-      "let r=[],i=null,a=new Set;do{let o=await t(`list-models-for-host`,{hostId:e,includeHidden:!0,cursor:i,limit:100}),s=o.data,c=o.nextCursor;if(c!=null&&a.has(c))throw Error(`repeated model list cursor`);r.push(...s),c!=null&&a.add(c),i=c}while(i!=null);return n==null?r.find(e=>e.isDefault)??null:r.find(e=>e.model===n||e.id===n)??null",
-    group: "lookup",
-  },
-  {
-    id: "623-model-lookup",
-    needle:
-      "let{data:n}=await $l(`list-models-for-host`,{hostId:e,includeHidden:!0,cursor:null,limit:100});return t==null?n.find(e=>e.isDefault)??null:n.find(e=>e.model===t||e.id===t)??null",
-    replacement:
-      "let n=[],r=null,i=new Set;do{let a=await $l(`list-models-for-host`,{hostId:e,includeHidden:!0,cursor:r,limit:100}),o=a.data,s=a.nextCursor;if(s!=null&&i.has(s))throw Error(`repeated model list cursor`);n.push(...o),s!=null&&i.add(s),r=s}while(r!=null);return t==null?n.find(e=>e.isDefault)??null:n.find(e=>e.model===t||e.id===t)??null",
-    group: "lookup",
-  },
-];
+const ID = "[$A-Za-z_][\\w$]*";
+
+/** Already-paginated queryFn (idempotent). */
+const QUERY_ALREADY =
+  /queryFn:async\(\)=>\{let \w+=\[\],\w+=null,\w+=new Set;do\{let \w+=await \w+\(`list-models-for-host`/;
+
+/**
+ * Single-page model list query used by the picker.
+ * Captures: callee, hostId local, limit local.
+ */
+const QUERY_RE = new RegExp(
+  String.raw`queryFn:\(\)=>(${ID})\(\`list-models-for-host\`,\{hostId:(${ID}),includeHidden:!0,cursor:null,limit:(${ID})\}\)`,
+);
+
+/**
+ * Single-page model lookup (default / by id).
+ * Optional trailing `,priority:\`critical\`` (26.707+).
+ * Captures: dataLocal, callee, hostIdArg, modelArg.
+ */
+const LOOKUP_RE = new RegExp(
+  String.raw`let\{data:(${ID})\}=await (${ID})\(\`list-models-for-host\`,\{hostId:(${ID}),includeHidden:!0,cursor:null,limit:100(,priority:\`critical\`)?\}\);return (${ID})==null\?\1\.find\(\w+=>\w+\.isDefault\)\?\?null:\1\.find\(\w+=>\w+\.model===\5\|\|\w+\.id===\5\)\?\?null`,
+);
+
+/** Already-paginated lookup (idempotent). */
+const LOOKUP_ALREADY =
+  /do\{let \w+=await \$?\w+\(`list-models-for-host`,\{hostId:\w+,includeHidden:!0,cursor:\w+,limit:100(?:,priority:`critical`)?\}/;
 
 function assetsDir(platform, customRoot) {
   if (customRoot) {
@@ -58,63 +50,77 @@ function assetsDir(platform, customRoot) {
   return path.join(SRC_DIR, platform, "_asar", "webview", "assets");
 }
 
-function findAssetFilesByNeedle(dir, needle) {
+function listJsFiles(dir) {
   if (!fs.existsSync(dir)) return [];
   return fs
     .readdirSync(dir)
     .filter((f) => f.endsWith(".js"))
-    .map((f) => path.join(dir, f))
-    .filter((filePath) => fs.readFileSync(filePath, "utf8").includes(needle));
+    .map((f) => path.join(dir, f));
 }
 
-function replaceOnce(source, needle, replacement) {
-  if (source.includes(replacement)) return { source, changed: false, status: "already" };
-  const count = source.split(needle).length - 1;
-  if (count === 0) return { source, changed: false, status: "missing" };
-  if (count !== 1) return { source, changed: false, status: "ambiguous" };
-  return { source: source.replace(needle, replacement), changed: true, status: "patched" };
+function buildQueryReplacement(callee, hostId, limit) {
+  return (
+    `queryFn:async()=>{let e=[],t=null,n=new Set;do{let i=await ${callee}(\`list-models-for-host\`,{hostId:${hostId},includeHidden:!0,cursor:t,limit:${limit}}),o=i.data,s=i.nextCursor;if(s!=null&&n.has(s))throw Error(\`repeated model list cursor\`);e.push(...o),s!=null&&n.add(s),t=s}while(t!=null);return{data:e}}`
+  );
 }
 
-function patchFile(bundlePath, rule, dryRun) {
-  const source = fs.readFileSync(bundlePath, "utf8");
-  const result = replaceOnce(source, rule.needle, rule.replacement);
-  if (result.status === "missing") {
-    return { ok: false, status: "missing" };
-  }
-  if (result.status === "ambiguous") {
-    console.log(`  [!] ${relPath(bundlePath)}: ${rule.id} needle matched more than once`);
-    return { ok: false, status: "ambiguous" };
-  }
-  if (result.status === "already") {
-    console.log(`  [ok] ${relPath(bundlePath)}: ${rule.id} already applied`);
-    return { ok: true, status: "already", group: rule.group };
-  }
-  if (dryRun) {
-    console.log(`  [?] ${relPath(bundlePath)}: would patch (${rule.id})`);
-    return { ok: true, status: "would-patch", group: rule.group };
-  }
-  fs.writeFileSync(bundlePath, result.source, "utf8");
-  console.log(`  [ok] ${relPath(bundlePath)}: patched (${rule.id})`);
-  return { ok: true, status: "patched", group: rule.group };
+function buildLookupReplacement(callee, hostIdArg, modelArg, prioritySuffix) {
+  const priority = prioritySuffix || "";
+  return (
+    `let n=[],r=null,i=new Set;do{let a=await ${callee}(\`list-models-for-host\`,{hostId:${hostIdArg},includeHidden:!0,cursor:r,limit:100${priority}}),o=a.data,s=a.nextCursor;if(s!=null&&i.has(s))throw Error(\`repeated model list cursor\`);n.push(...o),s!=null&&i.add(s),r=s}while(r!=null);return ${modelArg}==null?n.find(e=>e.isDefault)??null:n.find(e=>e.model===${modelArg}||e.id===${modelArg})??null`
+  );
 }
 
-function patchRuleInDir(dir, rule, dryRun) {
-  const files = findAssetFilesByNeedle(dir, rule.needle);
-  if (files.length === 0) {
-    const already = findAssetFilesByNeedle(dir, rule.replacement);
-    if (already.length > 0) {
-      for (const filePath of already) {
-        console.log(`  [ok] ${relPath(filePath)}: ${rule.id} already applied`);
-      }
-      return { ok: true, status: "already", group: rule.group };
+function patchQueryInSource(source) {
+  if (QUERY_ALREADY.test(source)) return { source, status: "already" };
+  const matches = [...source.matchAll(new RegExp(QUERY_RE.source, "g"))];
+  if (matches.length === 0) return { source, status: "missing" };
+  if (matches.length > 1) return { source, status: "ambiguous", count: matches.length };
+  const m = matches[0];
+  const replacement = buildQueryReplacement(m[1], m[2], m[3]);
+  return {
+    source: source.slice(0, m.index) + replacement + source.slice(m.index + m[0].length),
+    status: "patched",
+  };
+}
+
+function patchLookupInSource(source) {
+  if (LOOKUP_ALREADY.test(source)) return { source, status: "already" };
+  const matches = [...source.matchAll(new RegExp(LOOKUP_RE.source, "g"))];
+  if (matches.length === 0) return { source, status: "missing" };
+  if (matches.length > 1) return { source, status: "ambiguous", count: matches.length };
+  const m = matches[0];
+  const replacement = buildLookupReplacement(m[2], m[3], m[5], m[4] || "");
+  return {
+    source: source.slice(0, m.index) + replacement + source.slice(m.index + m[0].length),
+    status: "patched",
+  };
+}
+
+function applyGroup(dir, group, patchFn, dryRun) {
+  let hit = false;
+  for (const filePath of listJsFiles(dir)) {
+    const source = fs.readFileSync(filePath, "utf8");
+    if (!source.includes("list-models-for-host")) continue;
+    const result = patchFn(source);
+    if (result.status === "missing") continue;
+    if (result.status === "ambiguous") {
+      console.log(`  [!] ${relPath(filePath)}: ${group} matched ${result.count} times`);
+      process.exit(1);
     }
-    return { ok: false, status: "missing" };
+    hit = true;
+    if (result.status === "already") {
+      console.log(`  [ok] ${relPath(filePath)}: ${group} already applied`);
+      continue;
+    }
+    if (dryRun) {
+      console.log(`  [?] ${relPath(filePath)}: would patch (${group})`);
+      continue;
+    }
+    fs.writeFileSync(filePath, result.source, "utf8");
+    console.log(`  [ok] ${relPath(filePath)}: patched (${group})`);
   }
-  if (files.length > 1) {
-    console.log(`  [!] ${rule.id}: needle matched ${files.length} bundles`);
-    return { ok: false, status: "ambiguous" };
-  }
-  return { ...patchFile(files[0], rule, dryRun), group: rule.group };
+  return hit;
 }
 
 function main() {
@@ -129,22 +135,14 @@ function main() {
     process.exit(1);
   }
 
-  const groupHits = { query: false, lookup: false };
+  const queryHit = applyGroup(dir, "model-list-query", patchQueryInSource, dryRun);
+  const lookupHit = applyGroup(dir, "model-lookup", patchLookupInSource, dryRun);
 
-  for (const rule of RULES) {
-    const result = patchRuleInDir(dir, rule, dryRun);
-    if (result.ok) {
-      groupHits[rule.group] = true;
-    } else if (result.status !== "missing") {
-      process.exit(1);
-    }
-  }
-
-  if (!groupHits.query) {
-    console.error("[x] model list query pagination: no matching upstream bundle (602 or 623 layout)");
+  if (!queryHit) {
+    console.error("[x] model list query pagination: no matching upstream bundle");
     process.exit(1);
   }
-  if (!groupHits.lookup) {
+  if (!lookupHit) {
     console.log("[skip] model lookup pagination: needle not found (non-fatal)");
   }
 }
