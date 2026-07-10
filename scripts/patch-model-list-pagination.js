@@ -1,11 +1,18 @@
 #!/usr/bin/env node
 /**
- * Paginate model/list past upstream's single-page limit (100 models).
- * Required for large codex-shim catalogs in the Desktop model picker.
+ * Fetch the full model/list in one shot (high limit) instead of upstream's
+ * single-page default (100). Required for large codex-shim catalogs in the
+ * Desktop model picker.
+ *
+ * Prefer a single `limit:1e4` call over cursor loops: app-server returns the
+ * full page when limit >= catalog size (verified on 26.707), and one request
+ * matches "unlimited list at once" UX.
+ *
+ * Also upgrades older loop-pagination patches (do/while nextCursor) to the
+ * single high-limit form.
  *
  * Uses regex patterns so minified callee/local names can change across
- * upstream drops (26.602 / 26.623 / 26.707+). Prefer structural matches
- * over hard-coded identifier lists.
+ * upstream drops (26.602 / 26.623 / 26.707+).
  *
  * Usage:
  *   node scripts/patch-model-list-pagination.js [platform]
@@ -18,30 +25,55 @@ const { relPath, SRC_DIR } = require("./patch-util");
 
 const ID = "[$A-Za-z_][\\w$]*";
 
-/** Already-paginated queryFn (idempotent). */
-const QUERY_ALREADY =
-  /queryFn:async\(\)=>\{let \w+=\[\],\w+=null,\w+=new Set;do\{let \w+=await \w+\(`list-models-for-host`/;
+/** Single-request high limit (covers large BYOK catalogs in one page). */
+const HIGH_LIMIT = "1e4";
+
+function re(source) {
+  return new RegExp(source);
+}
+
+/** Already using high-limit queryFn (idempotent). */
+const QUERY_ALREADY = re(
+  `queryFn:\\(\\)=>${ID}\\(\`list-models-for-host\`,\\{hostId:${ID},includeHidden:!0,cursor:null,limit:${HIGH_LIMIT}\\}\\)`,
+);
 
 /**
- * Single-page model list query used by the picker.
- * Captures: callee, hostId local, limit local.
+ * Single-page model list query used by the picker (upstream default).
+ * Captures: callee, hostId local.
  */
-const QUERY_RE = new RegExp(
-  String.raw`queryFn:\(\)=>(${ID})\(\`list-models-for-host\`,\{hostId:(${ID}),includeHidden:!0,cursor:null,limit:(${ID})\}\)`,
+const QUERY_RE = re(
+  `queryFn:\\(\\)=>(${ID})\\(\`list-models-for-host\`,\\{hostId:(${ID}),includeHidden:!0,cursor:null,limit:${ID}\\}\\)`,
+);
+
+/**
+ * Older loop-pagination queryFn (from prior patch versions).
+ * Captures: callee, hostId.
+ */
+const QUERY_LOOP_RE = re(
+  `queryFn:async\\(\\)=>\\{let ${ID}=\\[\\],${ID}=null,${ID}=new Set;do\\{let ${ID}=await (${ID})\\(\`list-models-for-host\`,\\{hostId:(${ID}),includeHidden:!0,cursor:${ID},limit:${ID}\\}\\)[\\s\\S]*?return\\{data:${ID}\\}\\}`,
 );
 
 /**
  * Single-page model lookup (default / by id).
  * Optional trailing `,priority:\`critical\`` (26.707+).
- * Captures: dataLocal, callee, hostIdArg, modelArg.
+ * Captures: dataLocal, callee, hostIdArg, prioritySuffix, modelArg.
  */
-const LOOKUP_RE = new RegExp(
-  String.raw`let\{data:(${ID})\}=await (${ID})\(\`list-models-for-host\`,\{hostId:(${ID}),includeHidden:!0,cursor:null,limit:100(,priority:\`critical\`)?\}\);return (${ID})==null\?\1\.find\(\w+=>\w+\.isDefault\)\?\?null:\1\.find\(\w+=>\w+\.model===\5\|\|\w+\.id===\5\)\?\?null`,
+const LOOKUP_RE = re(
+  `let\\{data:(${ID})\\}=await (${ID})\\(\`list-models-for-host\`,\\{hostId:(${ID}),includeHidden:!0,cursor:null,limit:100(,priority:\`critical\`)?\\}\\);return (${ID})==null\\?\\1\\.find\\(\\w+=>\\w+\\.isDefault\\)\\?\\?null:\\1\\.find\\(\\w+=>\\w+\\.model===\\5\\|\\|\\w+\\.id===\\5\\)\\?\\?null`,
 );
 
-/** Already-paginated lookup (idempotent). */
-const LOOKUP_ALREADY =
-  /do\{let \w+=await \$?\w+\(`list-models-for-host`,\{hostId:\w+,includeHidden:!0,cursor:\w+,limit:100(?:,priority:`critical`)?\}/;
+/**
+ * Older loop-pagination lookup.
+ * Captures: callee, hostIdArg, prioritySuffix, modelArg.
+ */
+const LOOKUP_LOOP_RE = re(
+  `let ${ID}=\\[\\],${ID}=null,${ID}=new Set;do\\{let ${ID}=await (${ID})\\(\`list-models-for-host\`,\\{hostId:(${ID}),includeHidden:!0,cursor:${ID},limit:100(,priority:\`critical\`)?\\}\\)[\\s\\S]*?return (${ID})==null\\?${ID}\\.find\\(\\w+=>\\w+\\.isDefault\\)\\?\\?null:${ID}\\.find\\(\\w+=>\\w+\\.model===\\4\\|\\|\\w+\\.id===\\4\\)\\?\\?null`,
+);
+
+/** Already using high-limit lookup (idempotent). */
+const LOOKUP_ALREADY = re(
+  `let\\{data:${ID}\\}=await ${ID}\\(\`list-models-for-host\`,\\{hostId:${ID},includeHidden:!0,cursor:null,limit:${HIGH_LIMIT}(?:,priority:\`critical\`)?\\}`,
+);
 
 function assetsDir(platform, customRoot) {
   if (customRoot) {
@@ -58,43 +90,65 @@ function listJsFiles(dir) {
     .map((f) => path.join(dir, f));
 }
 
-function buildQueryReplacement(callee, hostId, limit) {
-  return (
-    `queryFn:async()=>{let e=[],t=null,n=new Set;do{let i=await ${callee}(\`list-models-for-host\`,{hostId:${hostId},includeHidden:!0,cursor:t,limit:${limit}}),o=i.data,s=i.nextCursor;if(s!=null&&n.has(s))throw Error(\`repeated model list cursor\`);e.push(...o),s!=null&&n.add(s),t=s}while(t!=null);return{data:e}}`
-  );
+function buildQueryReplacement(callee, hostId) {
+  return `queryFn:()=>${callee}(\`list-models-for-host\`,{hostId:${hostId},includeHidden:!0,cursor:null,limit:${HIGH_LIMIT}})`;
 }
 
-function buildLookupReplacement(callee, hostIdArg, modelArg, prioritySuffix) {
+function buildLookupReplacement(dataLocal, callee, hostIdArg, modelArg, prioritySuffix) {
   const priority = prioritySuffix || "";
-  return (
-    `let n=[],r=null,i=new Set;do{let a=await ${callee}(\`list-models-for-host\`,{hostId:${hostIdArg},includeHidden:!0,cursor:r,limit:100${priority}}),o=a.data,s=a.nextCursor;if(s!=null&&i.has(s))throw Error(\`repeated model list cursor\`);n.push(...o),s!=null&&i.add(s),r=s}while(r!=null);return ${modelArg}==null?n.find(e=>e.isDefault)??null:n.find(e=>e.model===${modelArg}||e.id===${modelArg})??null`
-  );
+  return `let{data:${dataLocal}}=await ${callee}(\`list-models-for-host\`,{hostId:${hostIdArg},includeHidden:!0,cursor:null,limit:${HIGH_LIMIT}${priority}});return ${modelArg}==null?${dataLocal}.find(e=>e.isDefault)??null:${dataLocal}.find(e=>e.model===${modelArg}||e.id===${modelArg})??null`;
+}
+
+function replaceOnce(source, pattern, build) {
+  const matches = [...source.matchAll(new RegExp(pattern.source, "g"))];
+  if (matches.length === 0) return null;
+  if (matches.length > 1) return { status: "ambiguous", count: matches.length };
+  const m = matches[0];
+  const replacement = build(m);
+  return {
+    status: "patched",
+    source: source.slice(0, m.index) + replacement + source.slice(m.index + m[0].length),
+  };
 }
 
 function patchQueryInSource(source) {
   if (QUERY_ALREADY.test(source)) return { source, status: "already" };
-  const matches = [...source.matchAll(new RegExp(QUERY_RE.source, "g"))];
-  if (matches.length === 0) return { source, status: "missing" };
-  if (matches.length > 1) return { source, status: "ambiguous", count: matches.length };
-  const m = matches[0];
-  const replacement = buildQueryReplacement(m[1], m[2], m[3]);
-  return {
-    source: source.slice(0, m.index) + replacement + source.slice(m.index + m[0].length),
-    status: "patched",
-  };
+
+  const fromLoop = replaceOnce(source, QUERY_LOOP_RE, (m) => buildQueryReplacement(m[1], m[2]));
+  if (fromLoop) {
+    if (fromLoop.status === "ambiguous") return fromLoop;
+    return fromLoop;
+  }
+
+  const fromSingle = replaceOnce(source, QUERY_RE, (m) => buildQueryReplacement(m[1], m[2]));
+  if (fromSingle) {
+    if (fromSingle.status === "ambiguous") return fromSingle;
+    return fromSingle;
+  }
+
+  return { source, status: "missing" };
 }
 
 function patchLookupInSource(source) {
   if (LOOKUP_ALREADY.test(source)) return { source, status: "already" };
-  const matches = [...source.matchAll(new RegExp(LOOKUP_RE.source, "g"))];
-  if (matches.length === 0) return { source, status: "missing" };
-  if (matches.length > 1) return { source, status: "ambiguous", count: matches.length };
-  const m = matches[0];
-  const replacement = buildLookupReplacement(m[2], m[3], m[5], m[4] || "");
-  return {
-    source: source.slice(0, m.index) + replacement + source.slice(m.index + m[0].length),
-    status: "patched",
-  };
+
+  const fromLoop = replaceOnce(source, LOOKUP_LOOP_RE, (m) =>
+    buildLookupReplacement("n", m[1], m[2], m[4], m[3] || ""),
+  );
+  if (fromLoop) {
+    if (fromLoop.status === "ambiguous") return fromLoop;
+    return fromLoop;
+  }
+
+  const fromSingle = replaceOnce(source, LOOKUP_RE, (m) =>
+    buildLookupReplacement(m[1], m[2], m[3], m[5], m[4] || ""),
+  );
+  if (fromSingle) {
+    if (fromSingle.status === "ambiguous") return fromSingle;
+    return fromSingle;
+  }
+
+  return { source, status: "missing" };
 }
 
 function applyGroup(dir, group, patchFn, dryRun) {
@@ -139,12 +193,22 @@ function main() {
   const lookupHit = applyGroup(dir, "model-lookup", patchLookupInSource, dryRun);
 
   if (!queryHit) {
-    console.error("[x] model list query pagination: no matching upstream bundle");
+    console.error("[x] model list query unlimited: no matching upstream bundle");
     process.exit(1);
   }
   if (!lookupHit) {
-    console.log("[skip] model lookup pagination: needle not found (non-fatal)");
+    console.log("[skip] model lookup unlimited: needle not found (non-fatal)");
   }
 }
 
-main();
+module.exports = {
+  HIGH_LIMIT,
+  QUERY_ALREADY,
+  LOOKUP_ALREADY,
+  patchQueryInSource,
+  patchLookupInSource,
+};
+
+if (require.main === module) {
+  main();
+}

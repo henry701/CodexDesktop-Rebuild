@@ -18,6 +18,7 @@
     "patch:linux-x64:shim-picker": "USE_SHIM_MODEL_PICKER=1 node scripts/patch-all.js mac-x64",
     "patch:linux-arm64:shim-picker": "USE_SHIM_MODEL_PICKER=1 node scripts/patch-all.js mac-arm64",
     "verify:shim-picker": "node scripts/verify-shim-picker-patch.js mac-x64",
+    "test:patches": "node scripts/__tests__/patch-model-list-pagination.test.js",
     "build:linux-x64:shim": "USE_SHIM_MODEL_PICKER=1 npm run patch:linux-x64 && npm run build:linux-x64",
     "patch:mac": "node scripts/patch-all.js mac-arm64 && node scripts/patch-all.js mac-x64",
     "patch:win": "node scripts/patch-all.js win",

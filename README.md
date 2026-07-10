@@ -160,8 +160,8 @@ CLI equivalents: `--use-system-cli`, `--no-system-cli`, `--use-cometix-codex`
 ### `USE_SHIM_MODEL_PICKER` (default: **off**)
 
 ASAR patch for [**codex-shim**](https://github.com/henry701/codex-shim) integration (Statsig allowlist bypass + sidebar
-`modelProviders` filter). **Model list pagination (>100 models) is always applied** via
-`patch-model-list-pagination.js` in `BASE_PATCHES`.
+`modelProviders` filter). **Unlimited model list (single `limit:1e4` fetch) is always applied** via
+`patch-model-list-pagination.js` in `BASE_PATCHES` (upstream defaults to 100).
 
 Verify with:
 ```bash
