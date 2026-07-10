@@ -160,6 +160,8 @@ module.exports = {
       ]);
       // cua_node ships Mach-O node/node_repl (apple-darwin); useless on Linux and
       // causes Codex CLI "Exec format error" if wired as mcp_servers.node_repl.
+      // codex-code-mode-host is replaced with a Linux ELF in prepare-src.js before
+      // forge runs, so it must still be copied (do not add it to MACOS_ONLY_FILES).
       const MACOS_ONLY_DIRS = new Set(["native", "app.asar.unpacked", "cua_node"]);
       if (isLinux) {
         for (const f of MACOS_ONLY_FILES) skip.add(f);
@@ -193,6 +195,19 @@ module.exports = {
       }
 
       console.log(`   [ok] ${copied} files (app.asar + unpacked + resources)`);
+
+      if (isLinux) {
+        const hostPath = path.join(resourcesPath, "codex-code-mode-host");
+        if (!fs.existsSync(hostPath)) {
+          throw new Error("Linux package missing codex-code-mode-host (prepare-src should install a Linux ELF)");
+        }
+        const { execFileSync } = require("child_process");
+        const kind = execFileSync("file", ["-b", hostPath], { encoding: "utf-8" }).trim();
+        if (kind.includes("Mach-O") || !kind.includes("ELF")) {
+          throw new Error(`Linux package has non-ELF codex-code-mode-host: ${kind}`);
+        }
+        console.log(`   [ok] codex-code-mode-host is Linux ELF`);
+      }
     },
   },
 };

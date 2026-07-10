@@ -21,6 +21,7 @@ channels.
 | **Stay close to upstream** | `npm run sync` pulls OpenAI's published macOS/Windows app bundles; Linux builds patch that ASAR locally instead of inventing a parallel app tree. |
 | **Minimize supply-chain risk** | Third-party CLI redistribution (`@cometix/codex` via npm) is **opt-in only** (`USE_COMETIX_CODEX=1`). Default Linux builds **do not** download unaudited binaries at package time. |
 | **System `codex` + `rg`** | Linux defaults to `USE_SYSTEM_CLI=1`: the build copies `codex` and `rg` from **your** `PATH` (or `CODEX_CLI_PATH` / `RG_CLI_PATH`) into the Electron bundle. You rebuild Desktop when you upgrade the system Codex CLI — one binary, one update channel. |
+| **Linux `codex-code-mode-host`** | The mac extract ships a Darwin Mach-O host. Linux builds replace it with the official musl ELF from `openai/codex` GitHub releases (`rust-v{VERSION}` matching `codex --version`), cached under `vendor/code-mode-host/`. Override with `CODEX_CODE_MODE_HOST_PATH`. (`codex-command-runner` / `codex-windows-sandbox-setup` are Windows-only release assets — not shipped on Linux.) |
 | **Optional BYOK picker** | `USE_SHIM_MODEL_PICKER=1` patches the ASAR so [henry701/codex-shim](https://github.com/henry701/codex-shim) catalog models appear in Desktop's picker (off by default). |
 | **Arch packaging** | `packaging/arch/codex-desktop-bin/` wraps the prebuilt zip for local `makepkg -si` installs. |
 

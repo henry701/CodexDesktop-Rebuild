@@ -22,6 +22,7 @@ const {
 } = require("./build-flags");
 const { resolveCodexVendor, resolveRgVendor } = require("./cometix-vendor");
 const { installSystemCli } = require("./system-cli");
+const { installCodeModeHost } = require("./code-mode-host");
 
 const SRC = path.join(__dirname, "..", "src");
 const PROJECT_ROOT = path.join(__dirname, "..");
@@ -72,6 +73,7 @@ function applyBundledCli(platform, sourceDir, useCometixCodex, useSystemCli) {
       } else {
         console.log("   [!] Linux rg not found in vendor, keeping upstream (will fail on Linux)");
       }
+      installLinuxCodeModeHost(sourceDir, platform);
     }
     return;
   }
@@ -86,13 +88,32 @@ function applyBundledCli(platform, sourceDir, useCometixCodex, useSystemCli) {
     for (const [name, { src }] of Object.entries(result.results)) {
       console.log(`   [${name}] bundled from system: ${src}`);
     }
+    installLinuxCodeModeHost(sourceDir, platform);
     return;
   }
 
   logCometixCodexSkipped("prepare-src");
   if (isLinux) {
     warnLinuxUpstreamCli(platform);
+    // Even when keeping upstream macOS codex/rg (non-functional), never leave a
+    // Darwin code-mode-host beside a Linux-replaced CLI — or when Cometix is used.
+    installLinuxCodeModeHost(sourceDir, platform);
   }
+}
+
+/**
+ * Replace Darwin `codex-code-mode-host` from the mac extract with a Linux ELF.
+ * @param {string} sourceDir
+ * @param {string} platform
+ */
+function installLinuxCodeModeHost(sourceDir, platform) {
+  const host = installCodeModeHost(sourceDir, platform);
+  if (!host.ok) {
+    console.error(`[x] code-mode-host: ${host.reason}`);
+    console.error("    Set CODEX_CODE_MODE_HOST_PATH, or install gh+zstd and ensure `codex --version` works.");
+    process.exit(1);
+  }
+  console.log(`   [code-mode-host] bundled Linux ELF from: ${host.src}`);
 }
 
 function main() {

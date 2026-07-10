@@ -34,6 +34,11 @@
  *   CODEX_CLI_PATH=/usr/bin/codex
  *   RG_CLI_PATH=/usr/bin/rg
  *
+ * Linux also replaces `codex-code-mode-host` (Darwin Mach-O in the mac extract)
+ * with the official musl ELF from openai/codex GitHub releases (`rust-v{VERSION}`),
+ * cached under vendor/code-mode-host/. Override with CODEX_CODE_MODE_HOST_PATH or
+ * pin with CODEX_CODE_MODE_HOST_VERSION.
+ *
  * USE_SHIM_MODEL_PICKER (default: off)
  *   Apply codex-shim-style Desktop patches so Shim API catalog models appear in the picker
  *   and sidebar (disables Statsig hidden-model gate). See scripts/patch-shim-model-picker.js.
