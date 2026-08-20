@@ -11,7 +11,7 @@
  */
 const fs = require("fs");
 const path = require("path");
-const { relPath, SRC_DIR } = require("./patch-util");
+const { relPath, SRC_DIR, parsePlatformArg, existingAsarPlatforms } = require("./patch-util");
 
 const ID = "[$A-Za-z_][\\w$]*";
 
@@ -20,6 +20,13 @@ const PICKER_RE = new RegExp(
   String.raw`(useHiddenModels:(${ID})\}\)\{let ${ID}=\[\],${ID}=null,)(${ID})=\2&&\w+!==\`amazonBedrock\`,`,
 );
 const PICKER_ALREADY = /useHiddenModels:\w\}\)\{let \w+=\[\],\w+=null,\w+=!1,/;
+
+/** 26.814+: allowlist lives in `$Na` / a second filter, not the old local. */
+const PICKER_V814_FROM = "a&&!r&&t!==`amazonBedrock`?n.has(i.model):!i.hidden";
+const PICKER_V814_TO = "!1?n.has(i.model):!i.hidden";
+const PICKER_V814_FILTER_FROM =
+  "i.useHiddenModels&&r!==`amazonBedrock`?i.availableModels.has(e.model):!e.hidden";
+const PICKER_V814_FILTER_TO = "!1?i.availableModels.has(e.model):!e.hidden";
 
 /**
  * Sidebar recent-threads filter: modelProviders:null → [] so shim threads show.
@@ -30,6 +37,10 @@ const SIDEBAR_RE = new RegExp(
 );
 const SIDEBAR_ALREADY =
   /listRecentThreads\(\{cursor:\w+,limit:\w+,useStateDbOnly:\w+=!1(?:,background:\w+=!1)?\}\)\{let \w+=\{[^}]*modelProviders:\[\],archived:!1/;
+const SIDEBAR_V814_FROM =
+  "getCompatibleThreadSortKey(this.recentConversationSortKey),modelProviders:null,archived:!1,sourceKinds:";
+const SIDEBAR_V814_TO =
+  "getCompatibleThreadSortKey(this.recentConversationSortKey),modelProviders:[],archived:!1,sourceKinds:";
 
 function assetsDir(platform, customRoot) {
   if (customRoot) {
@@ -60,6 +71,21 @@ function replaceOnceRegex(source, re, buildReplacement, alreadyRe) {
 }
 
 function patchPicker(source) {
+  if (source.includes(PICKER_V814_TO) && source.includes(PICKER_V814_FILTER_TO)) {
+    return { source, status: "already" };
+  }
+  let next = source;
+  let changed = false;
+  if (next.includes(PICKER_V814_FROM)) {
+    next = next.replace(PICKER_V814_FROM, PICKER_V814_TO);
+    changed = true;
+  }
+  if (next.includes(PICKER_V814_FILTER_FROM)) {
+    next = next.replace(PICKER_V814_FILTER_FROM, PICKER_V814_FILTER_TO);
+    changed = true;
+  }
+  if (changed) return { source: next, status: "patched" };
+
   return replaceOnceRegex(
     source,
     PICKER_RE,
@@ -69,6 +95,13 @@ function patchPicker(source) {
 }
 
 function patchSidebar(source) {
+  if (source.includes(SIDEBAR_V814_TO)) return { source, status: "already" };
+  if (source.includes(SIDEBAR_V814_FROM)) {
+    return {
+      source: source.replace(SIDEBAR_V814_FROM, SIDEBAR_V814_TO),
+      status: "patched",
+    };
+  }
   return replaceOnceRegex(
     source,
     SIDEBAR_RE,
@@ -110,7 +143,7 @@ function applyInDir(dir, patchId, patchFn, dryRun, { required = false } = {}) {
 function main() {
   const args = process.argv.slice(2);
   const dryRun = args.includes("--check");
-  const platform = args.find((a) => ["mac-arm64", "mac-x64", "win"].includes(a)) || "mac-x64";
+  const platform = parsePlatformArg(args) || existingAsarPlatforms()[0] || "linux-x64";
   const dir = assetsDir(platform, process.env.PATCH_ASAR_ROOT);
 
   if (!fs.existsSync(dir)) {

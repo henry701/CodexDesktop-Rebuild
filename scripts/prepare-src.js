@@ -110,7 +110,7 @@ function installLinuxCodeModeHost(sourceDir, platform) {
   const host = installCodeModeHost(sourceDir, platform);
   if (!host.ok) {
     console.error(`[x] code-mode-host: ${host.reason}`);
-    console.error("    Set CODEX_CODE_MODE_HOST_PATH, or install gh+zstd and ensure `codex --version` works.");
+    console.error("    Install openai-codex (ships /usr/bin/codex-code-mode-host), set CODEX_CODE_MODE_HOST_PATH, or install gh+zstd for GitHub fallback.");
     process.exit(1);
   }
   console.log(`   [code-mode-host] bundled Linux ELF from: ${host.src}`);

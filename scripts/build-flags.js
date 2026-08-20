@@ -34,10 +34,9 @@
  *   CODEX_CLI_PATH=/usr/bin/codex
  *   RG_CLI_PATH=/usr/bin/rg
  *
- * Linux also replaces `codex-code-mode-host` (Darwin Mach-O in the mac extract)
- * with the official musl ELF from openai/codex GitHub releases (`rust-v{VERSION}`),
- * cached under vendor/code-mode-host/. Override with CODEX_CODE_MODE_HOST_PATH or
- * pin with CODEX_CODE_MODE_HOST_VERSION.
+ * Linux also prefers `codex-code-mode-host` from PATH, then vendor cache,
+ * then the ELF already inside the official Linux ChatGPT bundle, then GitHub.
+ * Override with CODEX_CODE_MODE_HOST_PATH or pin with CODEX_CODE_MODE_HOST_VERSION.
  *
  * USE_SHIM_MODEL_PICKER (default: off)
  *   Apply codex-shim-style Desktop patches so Shim API catalog models appear in the picker
@@ -45,7 +44,7 @@
  *   Needs upstream ASAR extracted under src/{platform}/_asar/ (sync + patch pipeline).
  *
  *   USE_SHIM_MODEL_PICKER=1 npm run patch:linux-x64
- *   node scripts/patch-all.js mac-x64 --shim-model-picker
+ *   node scripts/patch-all.js linux-x64 --shim-model-picker
  */
 
 /** @see https://github.com/Haleclipse/codex */
@@ -125,10 +124,10 @@ function isSystemCliEnabled(platform, argv = process.argv.slice(2)) {
 function warnLinuxUpstreamCli(platform) {
   if (!platform.startsWith("linux")) return;
   console.log(
-    "   [!] Linux build with USE_SYSTEM_CLI=0: bundled codex/rg are macOS upstream binaries and will not run on Linux.",
+    "   [!] Linux build with USE_SYSTEM_CLI=0: keeping the CLI ELFs from the official ChatGPT .deb (or macOS Mach-O if this is the forge fallback).",
   );
   console.log(
-    `       Re-enable defaults (USE_SYSTEM_CLI=1), install codex/rg on PATH, or opt in: USE_COMETIX_CODEX=1 (fork: ${COMETIX_CODEX_REPO}).`,
+    `       Prefer USE_SYSTEM_CLI=1 (PATH), or opt in: USE_COMETIX_CODEX=1 (fork: ${COMETIX_CODEX_REPO}).`,
   );
 }
 

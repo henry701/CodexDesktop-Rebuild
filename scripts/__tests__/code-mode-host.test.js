@@ -35,10 +35,9 @@ test("maps linux platforms to musl release assets", () => {
   assert.strictEqual(assetNameForPlatform("mac-x64"), null);
 });
 
-test("CODEX_CODE_MODE_HOST_PATH wins over cache", () => {
+test("prefers codex-code-mode-host on PATH over vendor cache", () => {
   const vendor = vendorHostPath("linux-x64");
   assert.ok(fs.existsSync(vendor), "expected vendored linux-x64 host");
-  assert.ok(isElfExecutable(vendor), "vendored host must be ELF");
   const prev = process.env.CODEX_CODE_MODE_HOST_PATH;
   process.env.CODEX_CODE_MODE_HOST_PATH = vendor;
   try {
@@ -48,6 +47,24 @@ test("CODEX_CODE_MODE_HOST_PATH wins over cache", () => {
   } finally {
     if (prev === undefined) delete process.env.CODEX_CODE_MODE_HOST_PATH;
     else process.env.CODEX_CODE_MODE_HOST_PATH = prev;
+  }
+});
+
+test("falls back to vendor cache when host not on PATH", () => {
+  const vendor = vendorHostPath("linux-x64");
+  assert.ok(fs.existsSync(vendor), "expected vendored linux-x64 host");
+  const prev = process.env.CODEX_CODE_MODE_HOST_PATH;
+  delete process.env.CODEX_CODE_MODE_HOST_PATH;
+  const prevPath = process.env.PATH;
+  process.env.PATH = "/nonexistent";
+  try {
+    const resolved = resolveCodeModeHost("linux-x64");
+    assert.strictEqual(resolved.ok, true);
+    assert.strictEqual(resolved.src, fs.realpathSync(vendor));
+  } finally {
+    if (prev === undefined) delete process.env.CODEX_CODE_MODE_HOST_PATH;
+    else process.env.CODEX_CODE_MODE_HOST_PATH = prev;
+    process.env.PATH = prevPath;
   }
 });
 

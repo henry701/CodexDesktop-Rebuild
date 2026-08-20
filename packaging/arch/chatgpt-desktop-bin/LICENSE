@@ -1,0 +1,5 @@
+ChatGPT desktop is a rebuild and redistribution of OpenAI's Linux ChatGPT
+application. The Codex CLI component is licensed under Apache-2.0 by OpenAI.
+
+This package bundles the Electron / Owl runtime, which is licensed separately;
+see LICENSE.electron in this directory.

@@ -3,10 +3,11 @@
  * Run all patch scripts in sequence.
  *
  * Usage:
- *   node scripts/patch-all.js mac-x64              # Linux-oriented: patch mac-x64 upstream ASAR
+ *   node scripts/patch-all.js linux-x64           # Official Linux ChatGPT ASAR
+ *   node scripts/patch-all.js mac-x64              # macOS upstream ASAR
  *   node scripts/patch-all.js --check              # Dry-run all
- *   USE_COMETIX_CODEX=1 node scripts/patch-all.js mac-x64   # also apply archive-delete UI patch
- *   USE_SHIM_MODEL_PICKER=1 node scripts/patch-all.js mac-x64   # Shim API model picker (codex-shim)
+ *   USE_COMETIX_CODEX=1 node scripts/patch-all.js linux-x64
+ *   USE_SHIM_MODEL_PICKER=1 node scripts/patch-all.js linux-x64
  *
  * patch-archive-delete.js runs only when USE_COMETIX_CODEX=1 (needs Cometix CLI thread/delete).
  * patch-shim-model-picker.js runs only when USE_SHIM_MODEL_PICKER=1.
@@ -19,6 +20,7 @@ const {
   cometixCodexPassThroughArgs,
   shimModelPickerPassThroughArgs,
 } = require("./build-flags");
+const { parsePlatformArg } = require("./patch-util");
 
 const BASE_PATCHES = [
   "patch-i18n.js",
@@ -30,6 +32,7 @@ const BASE_PATCHES = [
   "patch-fast-mode.js",
   "patch-plugin-auth.js",
   "patch-updater.js",
+  "patch-default-chatgpt-mode.js",
 ];
 
 const COMETIX_PATCHES = ["patch-archive-delete.js"];
@@ -37,7 +40,7 @@ const SHIM_MODEL_PICKER_PATCHES = ["patch-shim-model-picker.js"];
 
 function main() {
   const args = process.argv.slice(2);
-  const platform = args.find((a) => ["mac-arm64", "mac-x64", "win", "unix"].includes(a));
+  const platform = parsePlatformArg(args);
   const useCometixCodex = isCometixCodexEnabled(args);
   const useShimModelPicker = isShimModelPickerEnabled(args);
   const extra = args.filter(

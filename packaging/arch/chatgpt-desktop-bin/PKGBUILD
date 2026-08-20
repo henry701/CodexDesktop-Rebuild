@@ -1,0 +1,88 @@
+# ChatGPT Desktop — official OpenAI Linux Electron bundle, patched locally.
+# Source zip is produced by: npm run sync:linux && USE_SHIM_MODEL_PICKER=1 npm run build:linux-x64:shim
+# Place ChatGPT-linux-x64-${pkgver}.zip in this directory, then: makepkg -si
+#
+# Do NOT run `yay -Bi .` with cleanBuild on this in-repo directory — yay can
+# delete PKGBUILD, sources, and .SRCINFO. Use makepkg -si instead.
+#
+# Never run the upstream Debian postinst. It writes apt sources + a signing key.
+
+pkgname=chatgpt-desktop
+pkgver=26.814.41957
+pkgrel=1
+pkgdesc="OpenAI ChatGPT desktop (official Linux bundle, locally patched)"
+arch=('x86_64')
+url="https://github.com/henry701/CodexDesktop-Rebuild"
+license=('Apache-2.0')
+depends=(
+  'alsa-lib'
+  'at-spi2-core'
+  'gtk3'
+  'libdrm'
+  'libnotify'
+  'libxcb'
+  'mesa'
+  'nss'
+  'xdg-utils'
+)
+optdepends=(
+  'gvfs: trash and file-manager integration'
+  'libsecret: GNOME Keyring credential storage'
+  'openai-codex: system CLI copied into the bundle at zip-build time'
+  'ripgrep: system rg copied into the bundle at zip-build time'
+  'trash-cli: freedesktop trash support without GVFS'
+  'xdg-desktop-portal: sandboxed desktop integration'
+)
+provides=('chatgpt')
+conflicts=('chatgpt')
+# Do not replaces/conflicts codex-desktop: different prefix (/usr/lib/chatgpt).
+# Remove the old package after quitting the running Codex instance.
+options=('!strip')
+install=chatgpt.install
+source=(
+  "ChatGPT-linux-x64-${pkgver}.zip"
+  "chatgpt.desktop"
+  "chatgpt.sh"
+  "chatgpt.png"
+  "LICENSE"
+  "LICENSE.electron"
+)
+sha256sums=('83744ee7876ae76fd5a16539613f47d7dc9fd59f5f86c256ec3e9aa458b45307'
+            'faa141199d78f98011501b85061e170a14ae75d5d32cf2b7cc62c278ea8d4e2c'
+            '1ff998dded917c5ca6c51d1a2dd13a1766faae511cf6a275bae80bf1169e51a0'
+            'cfe031774dd6aabdceca35338f329bc4844592767d043b7b4a56d8fb097dffd0'
+            'c19fb086622a6ea2c6e5b7baee845195ebd67e6721959135ea106c9a0a695b96'
+            '5154e165bd6c2cc0cfbcd8916498c7abab0497923bafcd5cb07673fe8480087d')
+
+prepare() {
+  bsdtar -xf "ChatGPT-linux-x64-${pkgver}.zip"
+  chmod 755 "ChatGPT-linux-x64"
+  for _bin in ChatGPT browser_crashpad_handler chrome_crashpad_handler codex-launcher; do
+    [[ -f "ChatGPT-linux-x64/${_bin}" ]] && chmod 755 "ChatGPT-linux-x64/${_bin}"
+  done
+  for _bin in resources/codex resources/rg resources/codex-code-mode-host; do
+    [[ -f "ChatGPT-linux-x64/${_bin}" ]] && chmod 755 "ChatGPT-linux-x64/${_bin}"
+  done
+}
+
+package() {
+  install -dm755 "${pkgdir}/usr/lib/chatgpt"
+  cp -a "ChatGPT-linux-x64/." "${pkgdir}/usr/lib/chatgpt/"
+  chmod 755 "${pkgdir}/usr/lib/chatgpt"
+  chmod 755 \
+    "${pkgdir}/usr/lib/chatgpt/ChatGPT" \
+    "${pkgdir}/usr/lib/chatgpt/browser_crashpad_handler" \
+    "${pkgdir}/usr/lib/chatgpt/codex-launcher" \
+    "${pkgdir}/usr/lib/chatgpt/resources/codex" \
+    "${pkgdir}/usr/lib/chatgpt/resources/rg" \
+    "${pkgdir}/usr/lib/chatgpt/resources/codex-code-mode-host" 2>/dev/null || true
+
+  install -Dm755 chatgpt.sh "${pkgdir}/usr/bin/chatgpt"
+  install -Dm644 chatgpt.desktop "${pkgdir}/usr/share/applications/chatgpt.desktop"
+  install -Dm644 chatgpt.png "${pkgdir}/usr/share/pixmaps/chatgpt.png"
+  install -Dm644 chatgpt.png "${pkgdir}/usr/share/icons/hicolor/256x256/apps/chatgpt.png"
+
+  install -dm755 "${pkgdir}/usr/share/licenses/${pkgname}"
+  install -Dm644 LICENSE "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
+  install -Dm644 LICENSE.electron "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE.electron"
+}

@@ -7,37 +7,39 @@
 > is a personal fork. It is **not** focused on upstreaming changes. Haleclipse/upstream are
 > welcome to borrow ideas and reimplement them independently.
 
-Cross-platform Electron build for OpenAI Codex Desktop App.
+Cross-platform Electron build for OpenAI Codex / ChatGPT Desktop.
 
 ## This fork (henry701)
 
-The fork exists to track **OpenAI Codex Desktop** releases with **as little extra surface
-area as possible**. Updates are expected to be frequent (new upstream app drops), so the
-build pipeline favors **trust boundaries you already control** over third-party binary
-channels.
+The fork tracks OpenAI's published desktop apps with as little extra surface
+area as possible. Linux no longer rebuilds the macOS ASAR through electron-forge:
+it patches the official Linux ChatGPT `.deb` and reuses that Electron/Owl runtime.
 
 | Principle | What it means here |
 |---|---|
-| **Stay close to upstream** | `npm run sync` pulls OpenAI's published macOS/Windows app bundles; Linux builds patch that ASAR locally instead of inventing a parallel app tree. |
-| **Minimize supply-chain risk** | Third-party CLI redistribution (`@cometix/codex` via npm) is **opt-in only** (`USE_COMETIX_CODEX=1`). Default Linux builds **do not** download unaudited binaries at package time. |
-| **System `codex` + `rg`** | Linux defaults to `USE_SYSTEM_CLI=1`: the build copies `codex` and `rg` from **your** `PATH` (or `CODEX_CLI_PATH` / `RG_CLI_PATH`) into the Electron bundle. You rebuild Desktop when you upgrade the system Codex CLI — one binary, one update channel. |
-| **Linux `codex-code-mode-host`** | The mac extract ships a Darwin Mach-O host. Linux builds replace it with the official musl ELF from `openai/codex` GitHub releases (`rust-v{VERSION}` matching `codex --version`), cached under `vendor/code-mode-host/`. Override with `CODEX_CODE_MODE_HOST_PATH`. (`codex-command-runner` / `codex-windows-sandbox-setup` are Windows-only release assets — not shipped on Linux.) |
-| **Optional BYOK picker** | `USE_SHIM_MODEL_PICKER=1` patches the ASAR so [henry701/codex-shim](https://github.com/henry701/codex-shim) catalog models appear in Desktop's picker (off by default). |
-| **Arch packaging** | `packaging/arch/codex-desktop-bin/` wraps the prebuilt zip for local `makepkg -si` installs. |
+| **Stay close to upstream** | `npm run sync:linux` extracts OpenAI's [Linux ChatGPT `.deb`](https://learn.chatgpt.com/docs/linux/linux-app). `npm run sync` still pulls macOS/Windows bundles. |
+| **Minimize supply-chain risk** | Third-party CLI redistribution (`@cometix/codex` via npm) is **opt-in only** (`USE_COMETIX_CODEX=1`). The Debian postinst is never run (it would add OpenAI's apt repo). |
+| **System `codex` + `rg`** | Linux defaults to `USE_SYSTEM_CLI=1`: the zip copies `codex` and `rg` from **your** `PATH`. `USE_SYSTEM_CLI=0` keeps the official Linux ELFs already in the `.deb`. |
+| **Linux `codex-code-mode-host`** | Prefer PATH (`/usr/bin/codex-code-mode-host` from `openai-codex`), then vendor cache, then the ELF shipped in the official Linux bundle, then GitHub musl fallback. Override with `CODEX_CODE_MODE_HOST_PATH`. |
+| **Optional BYOK picker** | `USE_SHIM_MODEL_PICKER=1` patches the ASAR so [henry701/codex-shim](https://github.com/henry701/codex-shim) catalog models appear in the picker (off by default). |
+| **Arch packaging** | `packaging/arch/chatgpt-desktop-bin/` wraps the patched zip as `chatgpt-desktop` (`/usr/lib/chatgpt`). Coexists with `codex-desktop` until you uninstall the old package. |
 
 **Typical fork workflow (Linux x64)**
 
 ```bash
 nvm use && npm ci
-npm run sync -- --skip-win          # pulls upstream; prunes /tmp/codex-sync + old packaging zips/pkgs
+npm run sync:linux                  # official chatgpt_amd64.deb → src/linux-x64/{bundle,_asar}
 # Ensure codex + rg on PATH (e.g. pacman/AUR openai-codex package)
-USE_SHIM_MODEL_PICKER=1 npm run build:linux-x64
-cp out/make/zip/linux/x64/Codex-linux-x64-*.zip packaging/arch/codex-desktop-bin/
-cd packaging/arch/codex-desktop-bin && makepkg -si
-# Optional: npm run prune:artifacts   (KEEP_VERSIONS=3 default; also runs at end of sync)
+USE_SHIM_MODEL_PICKER=1 npm run patch:linux-x64
+npm run build:linux-x64             # repack ASAR into official ChatGPT tree (no forge)
+cd packaging/arch/chatgpt-desktop-bin && updpkgsums && makepkg -si
+# Optional: npm run prune:artifacts   (KEEP_VERSIONS=3 default)
 ```
 
 Pair with `codex-shim sync-desktop` if you route Desktop through BYOK models.
+
+OpenAI's Linux preview does not include Computer Use yet; this fork still applies
+`patch-plugin-auth.js` so those gates stay on if a later drop enables them.
 
 ---
 
@@ -58,10 +60,11 @@ Pair with `codex-shim sync-desktop` if you route Desktop through BYOK models.
   nvm use
   ```
 
-- **Linux builds** — `codex` and `rg` on `PATH` (default `USE_SYSTEM_CLI`; this fork's
-  preferred path), plus `dpkg` and `fakeroot` for `.deb` artifacts. Install or upgrade
-  your system Codex CLI before rebuilding so the bundled copy stays current.
-- **Upstream app bundle** — run `npm run sync` before the first build to fetch platform extracts into `src/`.
+- **Linux builds** — `dpkg-deb` to extract the official `.deb`. Default `USE_SYSTEM_CLI`
+  still wants `codex` and `rg` on `PATH`. The forge/`dpkg`/`fakeroot` path is
+  `npm run build:linux-x64:forge` only (legacy mac-ASAR rebuild).
+- **Upstream app bundle** — `npm run sync:linux` before the first Linux build;
+  `npm run sync` for macOS/Windows extracts.
 
 ## Build
 
@@ -84,17 +87,23 @@ npm run build:all
 
 ### Linux workflow
 
-Linux packages are built from the macOS upstream ASAR (patched locally), not a native Linux upstream extract:
+Linux packages start from OpenAI's official ChatGPT `.deb` (same version as macOS).
+Patches land on `src/linux-x64/_asar/`; `prepare-linux-official.js` packs that ASAR
+back into the official `ChatGPT` Electron tree. No forge, no macOS Mach-O swap.
 
 ```bash
 nvm use
 npm ci
-npm run sync -- --skip-win          # fetch upstream macOS/Windows bundles
-npm run patch:linux-x64             # AST patches on mac-x64 extract
-npm run build:linux-x64             # deb + zip (system CLI by default)
+npm run sync:linux                  # chatgpt_amd64.deb → src/linux-x64/
+USE_SHIM_MODEL_PICKER=1 npm run patch:linux-x64
+npm run build:linux-x64             # out/ChatGPT-linux-x64-<ver>.zip
 ```
 
-For arm64, use `patch:linux-arm64` and `build:linux-arm64`.
+For arm64: `npm run sync:linux-arm64`, `patch:linux-arm64`, `build:linux-arm64`.
+
+Docs: [ChatGPT desktop app for Linux](https://learn.chatgpt.com/docs/linux/linux-app).
+OpenAI supports Ubuntu 24.04/26.04, Debian 13, and Fedora 43/44; Arch is best-effort
+via this PKGBUILD. Native Wayland is experimental; the launcher defaults to XWayland.
 
 ## Build flags
 
@@ -121,13 +130,12 @@ When Cometix is enabled, the archive-delete patch in `patch-archive-delete.js` a
 
 ### `USE_SYSTEM_CLI` (Linux default: **on** — **fork preference**)
 
-Bundle `codex` and `rg` from the host `PATH` instead of the macOS upstream binaries
-(which cannot run on Linux) or Cometix npm tarballs. At build time the resolved binaries
-are copied into `resources/` inside the zip; rebuild Desktop after upgrading your system
-`codex` package to pick up CLI changes. Cometix takes precedence when both are enabled.
+Bundle `codex` and `rg` from the host `PATH` instead of the official Linux `.deb`
+ELFs (or Cometix npm tarballs). Rebuild Desktop after upgrading your system
+`codex` package. Cometix takes precedence when both are enabled.
 
 ```bash
-USE_SYSTEM_CLI=0 npm run build:linux-x64   # keep upstream macOS binaries (non-functional on Linux)
+USE_SYSTEM_CLI=0 npm run build:linux-x64   # keep official Linux bundled ELFs
 npm run build:linux-x64:upstream           # same, via npm script
 ```
 
@@ -143,20 +151,22 @@ CLI equivalents: `--use-system-cli`, `--no-system-cli`, `--use-cometix-codex`
 
 1. Cometix (`USE_COMETIX_CODEX=1`)
 2. System PATH (`USE_SYSTEM_CLI=1`, default on Linux)
-3. macOS upstream extract (warns; binaries will not execute on Linux)
+3. Official Linux ChatGPT `.deb` ELFs (when `USE_SYSTEM_CLI=0`)
 
 ## npm scripts (Linux variants)
 
 | Script | Description |
 |--------|-------------|
-| `patch:linux-x64` | Patch mac-x64 upstream for Linux x64 build |
-| `patch:linux-arm64` | Patch mac-arm64 upstream for Linux arm64 build |
-| `build:linux-x64` | System CLI from PATH (default) |
-| `build:linux-x64:upstream` | Upstream macOS CLI binaries |
+| `sync:linux` | Download/extract official `chatgpt_amd64.deb` |
+| `sync:linux-arm64` | Same for `chatgpt_arm64.deb` |
+| `patch:linux-x64` | Patch `src/linux-x64/_asar` |
+| `patch:linux-arm64` | Patch `src/linux-arm64/_asar` |
+| `build:linux-x64` | Repack official ChatGPT tree + zip (system CLI by default) |
+| `build:linux-x64:upstream` | Keep official Linux CLI ELFs |
 | `build:linux-x64:cometix` | Cometix npm CLI binaries |
-| `build:linux-arm64:cometix` | Cometix CLI for arm64 |
+| `build:linux-x64:forge` | Legacy mac-ASAR + electron-forge rebuild |
 | `patch:linux-x64:shim-picker` | Desktop model picker for codex-shim catalog (`USE_SHIM_MODEL_PICKER=1`) |
-| `patch:linux-arm64:shim-picker` | Same for arm64 upstream extract |
+| `patch:linux-arm64:shim-picker` | Same for arm64 |
 
 ### `USE_SHIM_MODEL_PICKER` (default: **off**)
 
@@ -168,8 +178,8 @@ Verify with:
 ```bash
 USE_SHIM_MODEL_PICKER=1 npm run patch:linux-x64
 npm run patch:linux-x64:shim-picker   # convenience alias
-node scripts/patch-model-list-pagination.js mac-x64 --check
-node scripts/verify-shim-picker-patch.js mac-x64
+node scripts/patch-model-list-pagination.js linux-x64 --check
+node scripts/verify-shim-picker-patch.js linux-x64
 ```
 
 ### Menu bar suppression (Linux)
@@ -195,7 +205,7 @@ The patch makes three changes to the main-process bundle:
 
 Verify with:
 ```bash
-node scripts/patch-remove-menu.js mac-x64 --check
+node scripts/patch-remove-menu.js linux-x64 --check
 ```
 
 ### Linux window chrome (`patch-linux-chrome.js`)
@@ -214,71 +224,67 @@ sidebar). Opt out of compositing disable: `CODEX_DISABLE_GPU=0`.
 
 Verify with:
 ```bash
-node scripts/patch-linux-chrome.js mac-x64 --check
+node scripts/patch-linux-chrome.js linux-x64 --check
 ```
+
+The official Linux ASAR already uses a Linux titlebar overlay in 26.814; opaque-surface
+helpers may still omit `linux`. The patch is idempotent (`already` vs `applied`).
 
 ## Other build notes
 
 - **`better-sqlite3`** — pinned to `vendor/better-sqlite3-12.10.0-electron42.tgz` until upstream ships Electron 42 V8 API support ([WiseLibs/better-sqlite3#1475](https://github.com/WiseLibs/better-sqlite3/pull/1475)).
-- **`electron`** — pinned to **42.1.0** (exact), matching the upstream macOS app extract (`src/mac-x64/_asar/package.json`). Using 42.0.1 omits Linux transparent-window fixes backported in 42.1.x ([#51430](https://github.com/electron/electron/pull/51430)).
+- **`electron`** — pinned to **42.3.0** (exact), matching the official Linux ChatGPT bundle (`/usr/lib/chatgpt/version`) and the macOS extract.
 - **`ensure-electron-dist.js`** — Node 24+ workaround: full Electron runtime via system `unzip` (runs on `postinstall` and before forge package/make).
 - **RPM packages** — skipped when no RPM database is present (typical on Arch). Force with `FORGE_LINUX_RPM=1` after initializing an RPM db (e.g. `sudo rpm --initdb`).
 
 ## Install on Arch Linux
 
-A local PKGBUILD wraps the prebuilt Linux zip (full Electron bundle, **no system Electron**).
-The pacman package name is **`codex-desktop`**; the directory `packaging/arch/codex-desktop-bin/`
-uses the `-bin` suffix only as AUR convention for prebuilt packages.
-
-Build the zip with **`codex` and `rg` on your PATH`** so `USE_SYSTEM_CLI` (Linux default)
-snapshots your distro/OpenAI CLI into the bundle — not Cometix npm artifacts.
+A local PKGBUILD wraps the patched official Linux zip (OpenAI's Electron/Owl
+runtime, **no system Electron**). Pacman name is **`chatgpt-desktop`**. It
+installs next to `codex-desktop` (`/usr/lib/chatgpt` vs `/usr/lib/codex-desktop`);
+uninstall the old package after quitting Codex.
 
 ```bash
 # codex + rg must resolve on PATH before build (e.g. openai-codex from AUR/pacman)
-USE_SHIM_MODEL_PICKER=1 npm run build:linux-x64
-cp out/make/zip/linux/x64/Codex-linux-x64-*.zip packaging/arch/codex-desktop-bin/
-cd packaging/arch/codex-desktop-bin
-# bump pkgver/pkgrel in PKGBUILD when the version changes
+USE_SHIM_MODEL_PICKER=1 npm run patch:linux-x64
+npm run build:linux-x64
+cd packaging/arch/chatgpt-desktop-bin
 updpkgsums
 makepkg -si
 ```
 
-`npm run sync` and `npm run prune:artifacts` keep the newest **3** app versions of
-`Codex-linux-x64-*.zip` / `codex-desktop-*-x86_64.pkg.tar.zst` under the packaging dir,
-drop makepkg `src/`/`pkg/`, and clear `/tmp/codex-sync` download leftovers.
+`npm run prune:artifacts` keeps the newest **3** app versions of
+`ChatGPT-linux-x64-*.zip` / `chatgpt-desktop-*-x86_64.pkg.tar.zst`.
 
 To rebuild without reinstalling:
 
 ```bash
 makepkg -f
-yay -U --noconfirm codex-desktop-*.pkg.tar.zst
+sudo pacman -U --noconfirm chatgpt-desktop-*.pkg.tar.zst
 ```
 
-Do **not** run `yay -Bi .` with **cleanBuild** enabled inside this repo. Yay treats local PKGBUILD directories like AUR clones and can delete `PKGBUILD`, sources, and `.SRCINFO` from the tree. Prefer `makepkg -si`, or copy the packaging dir to `~/aur/codex-desktop-bin/` if you want yay-driven builds.
+Do **not** run `yay -Bi .` with **cleanBuild** enabled inside this repo.
 
 Installs:
 
 | Path | Purpose |
 |------|---------|
-| `/usr/lib/codex-desktop/` | Full Electron bundle |
-| `/usr/bin/codex-desktop` | Launcher (Claude-aligned Wayland + KDE compositing defaults) |
-| `/usr/share/applications/codex-desktop.desktop` | Application menu entry |
-| `/usr/share/icons/hicolor/256x256/apps/codex-desktop.png` | Icon |
+| `/usr/lib/chatgpt/` | Official Electron/Owl bundle with patched `app.asar` |
+| `/usr/bin/chatgpt` | Launcher (XWayland + compositing defaults) |
+| `/usr/share/applications/chatgpt.desktop` | Application menu entry |
+| `/usr/share/icons/hicolor/256x256/apps/chatgpt.png` | Icon |
 
-Runtime dependencies are declared in the PKGBUILD (`gtk3`, `nss`, `mesa`, etc.). Optional: `gvfs`, `libsecret`, `trash-cli`, `xdg-desktop-portal`.
+**Recommended alongside:** [henry701/codex-shim](https://github.com/henry701/codex-shim).
 
-**Recommended alongside:** [henry701/codex-shim](https://github.com/henry701/codex-shim) routes Codex Desktop through OpenCode and third-party models (Cursor, OpenCode free tier, NVIDIA NIM, etc.). Install with `uv tool install git+https://github.com/henry701/codex-shim`, run `codex-shim sync-desktop`, then optionally rebuild Desktop with `USE_SHIM_MODEL_PICKER=1` so the in-app model picker lists your shim catalog.
-
-Launch from the menu or run `codex-desktop`. **Default on Plasma Wayland is XWayland**
-(`--ozone-platform=x11` + `--disable-gpu-compositing`) for stable sidebar repaint. Native
-Wayland: `CODEX_OZONE_PLATFORM=wayland` (IME flags included).
+Launch `chatgpt`. Default on Plasma Wayland is XWayland
+(`--ozone-platform=x11` + `--disable-gpu-compositing`). Native Wayland:
+`CHATGPT_OZONE_PLATFORM=wayland` (or `CODEX_OZONE_PLATFORM`).
 
 | Goal | Command |
 |------|---------|
-| XWayland (default on Plasma) | `codex-desktop` |
-| Native Wayland | `CODEX_OZONE_PLATFORM=wayland codex-desktop` |
-| Enable GPU compositing | `CODEX_DISABLE_GPU=0 codex-desktop` |
-| Install previous kept build | `sudo pacman -U packaging/arch/codex-desktop-bin/codex-desktop-*-x86_64.pkg.tar.zst` |
+| XWayland (default on Plasma) | `chatgpt` |
+| Native Wayland | `CHATGPT_OZONE_PLATFORM=wayland chatgpt` |
+| Enable GPU compositing | `CHATGPT_DISABLE_GPU=0 chatgpt` |
 
 ## Development
 
@@ -290,7 +296,9 @@ npm run dev
 
 ```
 ├── src/
-│   ├── mac-x64/         # Upstream macOS x64 extract (Linux build base)
+│   ├── linux-x64/       # Official Linux ChatGPT extract (bundle/ + _asar/)
+│   ├── linux-arm64/     # Official Linux arm64 extract
+│   ├── mac-x64/         # Upstream macOS x64 extract
 │   ├── mac-arm64/       # Upstream macOS arm64 extract
 │   ├── win/             # Upstream Windows extract
 │   ├── .vite/build/     # Main process (Electron)
@@ -303,12 +311,13 @@ npm run dev
 │   ├── cometix-vendor.js
 │   ├── system-cli.js
 │   ├── ensure-electron-dist.js
+│   ├── linux-official.js / sync-linux-official.js / prepare-linux-official.js
 │   ├── patch-all.js      # Runs all BASE_PATCHES in sequence
 │   ├── patch-remove-menu.js  # Suppress GTK/KDE menu bar on Linux
 │   ├── ...
 ├── vendor/              # better-sqlite3 Electron 42 tarball
 ├── packaging/
-│   └── arch/codex-desktop-bin/  # Arch PKGBUILD (prebuilt zip → pacman)
+│   └── arch/chatgpt-desktop-bin/  # Arch PKGBUILD (official Linux zip → pacman)
 ├── forge.config.js      # Electron Forge config
 └── package.json
 ```
@@ -336,9 +345,9 @@ CI uses Node 24 (see `.nvmrc`), with the same `ensure-electron-dist` workaround 
 **Upstream:** general cross-platform rebuild improvements belong in
 [Haleclipse/CodexDesktop-Rebuild](https://github.com/Haleclipse/CodexDesktop-Rebuild).
 
-**This fork:** issues/PRs here are for personal workflow (system CLI defaults, Arch
-packaging, shim-picker integration, supply-chain posture). No expectation of upstream
-cherry-picks.
+**This fork:** issues/PRs here are for personal workflow (official Linux ChatGPT
+pipeline, system CLI defaults, Arch packaging, shim-picker). No expectation of
+upstream cherry-picks.
 
 ## Credits
 

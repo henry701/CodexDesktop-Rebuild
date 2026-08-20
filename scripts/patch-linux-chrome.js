@@ -13,7 +13,7 @@
  */
 const fs = require("fs");
 const path = require("path");
-const { locateBundles, relPath } = require("./patch-util");
+const { locateBundles, relPath, parsePlatformArg } = require("./patch-util");
 
 const REPLACEMENTS = [
   {
@@ -43,6 +43,21 @@ const REPLACEMENTS = [
       "function N2({appearance:e,isFocused:t,platform:n}){return!t&&!A2(e)&&(n===`darwin`||n===`win32`)}",
     to:
       "function N2({appearance:e,isFocused:t,platform:n}){return!t&&!A2(e)&&(n===`darwin`||n===`win32`||n===`linux`)}",
+  },
+  // 26.814+: primary overlay already includes linux; opaque helpers still omit it.
+  {
+    id: "linux-opaque-surface-mje",
+    from:
+      "opaqueWindowsEnabled:t,platform:n}){return t&&!A9(e)&&(n===`darwin`||n===`win32`)}",
+    to:
+      "opaqueWindowsEnabled:t,platform:n}){return t&&!A9(e)&&(n===`darwin`||n===`win32`||n===`linux`)}",
+  },
+  {
+    id: "linux-opaque-surface-hje",
+    from:
+      "isFocused:t,platform:n}){return!t&&!A9(e)&&n===`darwin`}",
+    to:
+      "isFocused:t,platform:n}){return!t&&!A9(e)&&(n===`darwin`||n===`linux`)}",
   },
 ];
 
@@ -87,7 +102,7 @@ function patchFile(filePath, { isCheck }) {
 function main() {
   const args = process.argv.slice(2);
   const isCheck = args.includes("--check");
-  const platform = args.find((a) => ["mac-arm64", "mac-x64", "win", "unix"].includes(a));
+  const platform = parsePlatformArg(args);
   const customRoot = process.env.PATCH_ASAR_ROOT;
 
   let bundles;

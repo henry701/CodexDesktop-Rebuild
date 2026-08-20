@@ -1,3 +1,4 @@
+# SUPERSEDED for Linux installs: packaging/arch/chatgpt-desktop-bin (official ChatGPT .deb).
 # Codex Desktop — prebuilt Electron bundle (local zip or GitHub release).
 # Built from CodexDesktop-Rebuild linux-x64 zip (see repo README).
 # Build the zip first: npm run build:linux-x64
@@ -9,7 +10,7 @@
 # delete PKGBUILD, sources, and .SRCINFO. Use makepkg -si instead.
 
 pkgname=codex-desktop
-pkgver=26.707.31428
+pkgver=26.814.41957
 pkgrel=1
 pkgdesc="OpenAI Codex Desktop — AI coding assistant (prebuilt Electron bundle)"
 arch=('x86_64')
@@ -42,7 +43,7 @@ source=(
   "LICENSE"
   "LICENSE.electron"
 )
-sha256sums=('42963ba27f27da116fc5ae2a670ce42b071c2f8943fa85e473be9aa7605bf5d8'
+sha256sums=('452b977aadc3989a33e2a5cc070a850a04eae56ffafad0091a5d1a6696168024'
             'a364838e5ad66e5c06248122afee90b650fd82cf8072fd5f6449de9ee28e4fd3'
             'c7a51c7e1225c44ab387fd2a65075dcf24a8429bbd9d1304b540220ca35f3e94'
             '0c1d3bb97c171c06d0b3c8007433877497d63ef91e51562478530195d2448514'

@@ -158,17 +158,17 @@ jobs:
       - name: Install system dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y rpm fakeroot dpkg 7zip
+          sudo apt-get install -y dpkg
 
       - name: Install dependencies
         run: |
           npm ci
 
-      - name: Sync upstream (macOS ZIP for unix, skip Windows)
-        run: node scripts/sync-upstream.js --force --skip-win
+      - name: Sync official Linux ChatGPT .deb
+        run: node scripts/sync-linux-official.js --platform linux-${{ matrix.arch }} --force
 
       - name: Patch
-        run: node scripts/patch-all.js mac-${{ matrix.arch }}
+        run: node scripts/patch-all.js linux-${{ matrix.arch }}
 
       - name: Build
         run: npm run build:linux-${{ matrix.arch }}
@@ -176,11 +176,9 @@ jobs:
       - name: Upload artifacts
         uses: actions/upload-artifact@v7
         with:
-          name: Codex-Linux-${{ matrix.arch }}
+          name: ChatGPT-Linux-${{ matrix.arch }}
           path: |
-            out/make/deb/**/*.deb
-            out/make/rpm/**/*.rpm
-            out/make/zip/**/*.zip
+            out/ChatGPT-linux-*.zip
           if-no-files-found: error
 
   # ──────────────────────────────────────────────
@@ -215,10 +213,12 @@ jobs:
           WIN_VER=$(echo "$RESULT" | node -e "let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>{try{const j=JSON.parse(d);console.log(j.platforms?.Windows?.version||'')}catch{console.log('')}})")
 
           VERSION="${MAC_ARM64:-${MAC_X64:-$WIN_VER}}"
+          LINUX_VER=$(echo "$RESULT" | node -e "let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>{try{const j=JSON.parse(d);console.log(j.platforms?.['linux-x64']?.version||'')}catch{console.log('')}})")
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "mac_arm64=$MAC_ARM64" >> "$GITHUB_OUTPUT"
           echo "mac_x64=$MAC_X64" >> "$GITHUB_OUTPUT"
           echo "win_version=$WIN_VER" >> "$GITHUB_OUTPUT"
+          echo "linux_version=$LINUX_VER" >> "$GITHUB_OUTPUT"
 
           if [ -z "$VERSION" ]; then echo "No version detected"; exit 0; fi
 
@@ -259,7 +259,7 @@ jobs:
             | macOS arm64 | `${{ steps.version.outputs.mac_arm64 || 'N/A' }}` |
             | macOS x64 | `${{ steps.version.outputs.mac_x64 || 'N/A' }}` |
             | Windows x64 | `${{ steps.version.outputs.win_version || 'N/A' }}` |
-            | Linux | uses macOS ASAR |
+            | Linux | official ChatGPT .deb `${{ steps.version.outputs.linux_version || 'N/A' }}` |
           files: |
             artifacts/**/*.dmg
             artifacts/**/*.zip
