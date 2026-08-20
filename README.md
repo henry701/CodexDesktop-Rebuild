@@ -31,7 +31,7 @@ nvm use && npm ci
 npm run sync:linux                  # official chatgpt_amd64.deb → src/linux-x64/{bundle,_asar}
 # Ensure codex + rg on PATH (e.g. pacman/AUR openai-codex package)
 USE_SHIM_MODEL_PICKER=1 npm run patch:linux-x64
-npm run build:linux-x64             # repack ASAR into official ChatGPT tree (no forge)
+npm run build                       # official Linux ChatGPT zip (no forge)
 cd packaging/arch/chatgpt-desktop-bin && updpkgsums && makepkg -si
 # Optional: npm run prune:artifacts   (KEEP_VERSIONS=3 default)
 ```
@@ -71,14 +71,13 @@ OpenAI's Linux preview does not include Computer Use yet; this fork still applie
 ```bash
 npm ci
 
-# Build for current platform
+# Official Linux ChatGPT (this fork's default; not the legacy Codex forge rebuild)
 npm run build
 
-# Build for specific platform
+# Other platforms (macOS/Windows still use the Codex/mac ASAR extract)
 npm run build:mac-x64
 npm run build:mac-arm64
 npm run build:win-x64
-npm run build:linux-x64
 npm run build:linux-arm64
 
 # Build all platforms
@@ -96,7 +95,7 @@ nvm use
 npm ci
 npm run sync:linux                  # chatgpt_amd64.deb → src/linux-x64/
 USE_SHIM_MODEL_PICKER=1 npm run patch:linux-x64
-npm run build:linux-x64             # out/ChatGPT-linux-x64-<ver>.zip
+npm run build                       # out/ChatGPT-linux-x64-<ver>.zip
 ```
 
 For arm64: `npm run sync:linux-arm64`, `patch:linux-arm64`, `build:linux-arm64`.
@@ -157,6 +156,7 @@ CLI equivalents: `--use-system-cli`, `--no-system-cli`, `--use-cometix-codex`
 
 | Script | Description |
 |--------|-------------|
+| `build` | **Default:** same as `build:linux-x64` (official ChatGPT, not Codex forge) |
 | `sync:linux` | Download/extract official `chatgpt_amd64.deb` |
 | `sync:linux-arm64` | Same for `chatgpt_arm64.deb` |
 | `patch:linux-x64` | Patch `src/linux-x64/_asar` |
@@ -247,7 +247,7 @@ uninstall the old package after quitting Codex.
 ```bash
 # codex + rg must resolve on PATH before build (e.g. openai-codex from AUR/pacman)
 USE_SHIM_MODEL_PICKER=1 npm run patch:linux-x64
-npm run build:linux-x64
+npm run build
 cd packaging/arch/chatgpt-desktop-bin
 updpkgsums
 makepkg -si

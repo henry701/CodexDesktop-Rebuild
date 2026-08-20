@@ -3,8 +3,11 @@
  * Unit tests for official Linux ChatGPT deb helpers.
  */
 const assert = require("assert");
+const fs = require("fs");
+const path = require("path");
 const { parseDebianPackages, LINUX_OFFICIAL } = require("../linux-official");
 const patchUtil = require("../patch-util");
+const pkg = require("../../package.json");
 
 function test(name, fn) {
   try {
@@ -56,6 +59,21 @@ test("parsePlatformArg accepts linux-x64", () => {
 
 test("rejects Packages text without chatgpt", () => {
   assert.throws(() => parseDebianPackages("Package: foo\nVersion: 1\n"), /chatgpt stanza not found/);
+});
+
+test("npm run build produces official Linux ChatGPT, not legacy Codex forge", () => {
+  assert.strictEqual(pkg.scripts.build, "npm run build:linux-x64");
+  assert.strictEqual(
+    pkg.scripts["build:linux-x64"],
+    "node scripts/prepare-linux-official.js --platform linux-x64",
+  );
+  assert.match(pkg.scripts["build:linux-x64:forge"], /electron-forge/);
+});
+
+test("BASE_PATCHES does not rewrite ChatGPT's in-app home default", () => {
+  const patchAll = fs.readFileSync(path.join(__dirname, "../patch-all.js"), "utf8");
+  assert.doesNotMatch(patchAll, /patch-default-chatgpt-mode/);
+  assert.ok(!fs.existsSync(path.join(__dirname, "../patch-default-chatgpt-mode.js")));
 });
 
 console.log("all linux-official tests passed");
