@@ -32,6 +32,7 @@ const BASE_PATCHES = [
   "patch-fast-mode.js",
   "patch-plugin-auth.js",
   "patch-updater.js",
+  "patch-default-chatgpt-mode.js",
 ];
 
 const COMETIX_PATCHES = ["patch-archive-delete.js"];
