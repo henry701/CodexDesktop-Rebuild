@@ -14,7 +14,7 @@
  */
 const fs = require("fs");
 const path = require("path");
-const { locateBundles, relPath } = require("./patch-util");
+const { locateBundles, relPath, parsePlatformArg } = require("./patch-util");
 
 const REPLACEMENTS = [
   {
@@ -113,7 +113,7 @@ function patchFile(filePath, { isCheck }) {
 function main() {
   const args = process.argv.slice(2);
   const isCheck = args.includes("--check");
-  const platform = args.find((a) => ["mac-arm64", "mac-x64", "win", "unix"].includes(a));
+  const platform = parsePlatformArg(args);
   const customRoot = process.env.PATCH_ASAR_ROOT;
 
   let bundles;

@@ -6,7 +6,7 @@
  * Linux musl hosts are published on openai/codex GitHub releases.
  *
  * Resolution order:
- *   1. CODEX_CODE_MODE_HOST_PATH
+ *   1. CODEX_CODE_MODE_HOST_PATH or `codex-code-mode-host` on PATH (e.g. /usr/bin)
  *   2. Cached vendor/code-mode-host/<platform>/codex-code-mode-host
  *   3. Download rust-v{VERSION} asset from openai/codex (VERSION from
  *      CODEX_CODE_MODE_HOST_VERSION, or `codex --version`, or CODEX_CLI_PATH)
@@ -69,11 +69,12 @@ function vendorHostPath(platform) {
  */
 function isElfExecutable(filePath) {
   try {
-    const out = execSync(`file -b "${filePath}"`, {
-      encoding: "utf-8",
-      stdio: ["pipe", "pipe", "pipe"],
-    }).trim();
-    return out.includes("ELF") && !out.includes("Mach-O");
+    const fd = fs.openSync(filePath, "r");
+    const buf = Buffer.alloc(4);
+    fs.readSync(fd, buf, 0, 4, 0);
+    fs.closeSync(fd);
+    // ELF magic — avoids depending on `file` being on PATH during builds/tests.
+    return buf[0] === 0x7f && buf[1] === 0x45 && buf[2] === 0x4c && buf[3] === 0x46;
   } catch {
     return false;
   }
@@ -131,9 +132,12 @@ function downloadOfficialHost(platform, version) {
  * @returns {{ ok: true, src: string } | { ok: false, reason: string }}
  */
 function resolveCodeModeHost(platform) {
-  const override = process.env.CODEX_CODE_MODE_HOST_PATH;
-  if (override && fs.existsSync(override)) {
-    return { ok: true, src: fs.realpathSync(override) };
+  const fromPath = resolveFromPath(
+    "codex-code-mode-host",
+    process.env.CODEX_CODE_MODE_HOST_PATH,
+  );
+  if (fromPath && isElfExecutable(fromPath)) {
+    return { ok: true, src: fromPath };
   }
 
   const cached = vendorHostPath(platform);

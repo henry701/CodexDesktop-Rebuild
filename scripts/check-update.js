@@ -32,6 +32,7 @@ const APPCAST_ARM64 = "https://persistent.oaistatic.com/codex-app-prod/appcast.x
 const APPCAST_X64 = "https://persistent.oaistatic.com/codex-app-prod/appcast-x64.xml";
 const MS_STORE_PRODUCT_ID = "9plm9xgg6vks";
 const VERSION_FILE = path.join(__dirname, ".versions.json");
+const { fetchLinuxDebInfo } = require("./linux-official");
 
 // ─── HTTP 辅助 ───────────────────────────────────────────────────
 function httpsGet(url) {
@@ -137,6 +138,27 @@ async function checkWindowsVersion() {
   };
 }
 
+async function checkLinuxX64Version() {
+  return checkLinuxDeb("linux-x64");
+}
+
+async function checkLinuxArm64Version() {
+  return checkLinuxDeb("linux-arm64");
+}
+
+async function checkLinuxDeb(platform) {
+  const info = await fetchLinuxDebInfo(platform);
+  return {
+    platform,
+    version: info.version,
+    build: "",
+    pubDate: "",
+    downloadUrl: info.url || info.latestUrl,
+    size: Number(info.size || 0),
+    packageName: info.filename || `chatgpt_${info.architecture}.deb`,
+  };
+}
+
 // ─── 版本记录读写 ────────────────────────────────────────────────
 function loadVersions() {
   try {
@@ -174,6 +196,8 @@ async function main() {
     checkMacArm64Version(),
     checkMacX64Version(),
     checkWindowsVersion(),
+    checkLinuxX64Version(),
+    checkLinuxArm64Version(),
   ]);
 
   for (const r of checks) {
@@ -245,7 +269,13 @@ async function main() {
   return { results, updates };
 }
 
-module.exports = { checkMacArm64Version, checkMacX64Version, checkWindowsVersion };
+module.exports = {
+  checkMacArm64Version,
+  checkMacX64Version,
+  checkWindowsVersion,
+  checkLinuxX64Version,
+  checkLinuxArm64Version,
+};
 
 if (require.main === module) {
   main().catch((e) => {

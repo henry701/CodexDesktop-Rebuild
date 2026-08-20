@@ -6,13 +6,13 @@ const fs = require("fs");
 const path = require("path");
 const { SRC_DIR } = require("./patch-util");
 
-const PICKER_OK = /useHiddenModels:\w\}\)\{let \w+=\[\],\w+=null,\w+=!1,/;
+const PICKER_OK = /useHiddenModels:\w\}\)\{let \w+=\[\],\w+=null,\w+=!1,|!1\?n\.has\(i\.model\):!i\.hidden/;
 const PAGINATION_OK =
-  /queryFn:\(\)=>\w+\(`list-models-for-host`,\{hostId:\w+,includeHidden:!0,cursor:null,limit:1e4\}\)/;
+  /queryFn:\(\)=>\w+\(`list-models-for-host`,\{hostId:\w+,includeHidden:!0,cursor:null,limit:1e4\}\)|sendRequest\(`model\/list`,\{includeHidden:!0,cursor:null,limit:1e4\}\)/;
 const LOOKUP_PAGINATION_OK =
-  /let\{data:\w+\}=await \$?\w+\(`list-models-for-host`,\{hostId:\w+,includeHidden:!0,cursor:null,limit:1e4(?:,priority:`critical`)?\}/;
+  /let\{data:\w+\}=await \$?\w+\(`list-models-for-host`,\{hostId:\w+,includeHidden:!0,cursor:null,limit:1e4(?:,priority:`critical`)?\}|sendRequest\(`model\/list`,\{includeHidden:!0,cursor:null,limit:1e4\}/;
 const SIDEBAR_OK =
-  /listRecentThreads\(\{cursor:\w+,limit:\w+,useStateDbOnly:\w+=!1(?:,background:\w+=!1)?\}\)\{let \w+=\{[^}]*modelProviders:\[\],archived:!1/;
+  /listRecentThreads\(\{cursor:\w+,limit:\w+,useStateDbOnly:\w+=!1(?:,background:\w+=!1)?\}\)\{let \w+=\{[^}]*modelProviders:\[\],archived:!1|getCompatibleThreadSortKey\(this\.recentConversationSortKey\),modelProviders:\[\],archived:!1/;
 
 function assetsDir(platform) {
   return path.join(SRC_DIR, platform, "_asar", "webview", "assets");
@@ -38,7 +38,7 @@ function check(label, files, pattern) {
 }
 
 function main() {
-  const platform = process.argv[2] || "mac-x64";
+  const platform = process.argv[2] || "linux-x64";
   const dir = assetsDir(platform);
   if (!fs.existsSync(dir)) {
     console.error("[fail] missing assets — run: npm run sync");

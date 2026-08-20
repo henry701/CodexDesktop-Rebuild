@@ -21,7 +21,7 @@
  */
 const fs = require("fs");
 const path = require("path");
-const { relPath, SRC_DIR } = require("./patch-util");
+const { relPath, SRC_DIR, parsePlatformArg, existingAsarPlatforms } = require("./patch-util");
 
 const ID = "[$A-Za-z_][\\w$]*";
 
@@ -36,6 +36,21 @@ function re(source) {
 const QUERY_ALREADY = re(
   `queryFn:\\(\\)=>${ID}\\(\`list-models-for-host\`,\\{hostId:${ID},includeHidden:!0,cursor:null,limit:${HIGH_LIMIT}\\}\\)`,
 );
+
+/** 26.814+: `model/list` RPC (hostId is implicit on the client). */
+const QUERY_MODEL_LIST_ALREADY = "sendRequest(`model/list`,{includeHidden:!0,cursor:null,limit:1e4}";
+const QUERY_MODEL_LIST_RE = re(
+  `sendRequest\\(\`model/list\`,\\{includeHidden:!0,cursor:null,limit:(?!${HIGH_LIMIT})[^}]+\\}`,
+);
+const QUERY_MODEL_LIST_ALT_RE = re(
+  `sendRequest\\(\`model/list\`,\\{cursor:null,includeHidden:!0,limit:(?!${HIGH_LIMIT})[^}]+\\}`,
+);
+const QUERY_MODEL_LIST_ALT_ALREADY =
+  "sendRequest(`model/list`,{cursor:null,includeHidden:!0,limit:1e4}";
+const DEFAULT_LIMIT_FROM = "fPa=100,pPa=[`models`,`list`]";
+const DEFAULT_LIMIT_TO = `fPa=${HIGH_LIMIT},pPa=[\`models\`,\`list\`]`;
+const PAGER_LIMIT_FROM = "pHr=100,mHr=5e3";
+const PAGER_LIMIT_TO = `pHr=${HIGH_LIMIT},mHr=5e3`;
 
 /**
  * Single-page model list query used by the picker (upstream default).
@@ -112,20 +127,48 @@ function replaceOnce(source, pattern, build) {
 }
 
 function patchQueryInSource(source) {
-  if (QUERY_ALREADY.test(source)) return { source, status: "already" };
+  let next = source;
+  let changed = false;
 
-  const fromLoop = replaceOnce(source, QUERY_LOOP_RE, (m) => buildQueryReplacement(m[1], m[2]));
+  if (next.includes(DEFAULT_LIMIT_FROM)) {
+    next = next.replace(DEFAULT_LIMIT_FROM, DEFAULT_LIMIT_TO);
+    changed = true;
+  }
+  if (next.includes(PAGER_LIMIT_FROM)) {
+    next = next.replace(PAGER_LIMIT_FROM, PAGER_LIMIT_TO);
+    changed = true;
+  }
+  if (QUERY_MODEL_LIST_RE.test(next)) {
+    next = next.replace(new RegExp(QUERY_MODEL_LIST_RE.source, "g"), QUERY_MODEL_LIST_ALREADY);
+    changed = true;
+  }
+  if (QUERY_MODEL_LIST_ALT_RE.test(next)) {
+    next = next.replace(new RegExp(QUERY_MODEL_LIST_ALT_RE.source, "g"), QUERY_MODEL_LIST_ALT_ALREADY);
+    changed = true;
+  }
+
+  if (QUERY_ALREADY.test(next) && !changed) return { source: next, status: "already" };
+  if (
+    !changed &&
+    next.includes(DEFAULT_LIMIT_TO) &&
+    next.includes(QUERY_MODEL_LIST_ALREADY)
+  ) {
+    return { source: next, status: "already" };
+  }
+
+  const fromLoop = replaceOnce(next, QUERY_LOOP_RE, (m) => buildQueryReplacement(m[1], m[2]));
   if (fromLoop) {
     if (fromLoop.status === "ambiguous") return fromLoop;
     return fromLoop;
   }
 
-  const fromSingle = replaceOnce(source, QUERY_RE, (m) => buildQueryReplacement(m[1], m[2]));
+  const fromSingle = replaceOnce(next, QUERY_RE, (m) => buildQueryReplacement(m[1], m[2]));
   if (fromSingle) {
     if (fromSingle.status === "ambiguous") return fromSingle;
     return fromSingle;
   }
 
+  if (changed) return { source: next, status: "patched" };
   return { source, status: "missing" };
 }
 
@@ -155,7 +198,14 @@ function applyGroup(dir, group, patchFn, dryRun) {
   let hit = false;
   for (const filePath of listJsFiles(dir)) {
     const source = fs.readFileSync(filePath, "utf8");
-    if (!source.includes("list-models-for-host")) continue;
+    if (
+      !source.includes("list-models-for-host") &&
+      !source.includes("model/list") &&
+      !source.includes(DEFAULT_LIMIT_FROM) &&
+      !source.includes(DEFAULT_LIMIT_TO)
+    ) {
+      continue;
+    }
     const result = patchFn(source);
     if (result.status === "missing") continue;
     if (result.status === "ambiguous") {
@@ -180,7 +230,7 @@ function applyGroup(dir, group, patchFn, dryRun) {
 function main() {
   const args = process.argv.slice(2);
   const dryRun = args.includes("--check");
-  const platform = args.find((a) => ["mac-arm64", "mac-x64", "win"].includes(a)) || "mac-x64";
+  const platform = parsePlatformArg(args) || existingAsarPlatforms()[0] || "linux-x64";
   const customRoot = process.env.PATCH_ASAR_ROOT;
   const dir = assetsDir(platform, customRoot);
 
@@ -205,6 +255,8 @@ module.exports = {
   HIGH_LIMIT,
   QUERY_ALREADY,
   LOOKUP_ALREADY,
+  QUERY_MODEL_LIST_ALREADY,
+  DEFAULT_LIMIT_TO,
   patchQueryInSource,
   patchLookupInSource,
 };

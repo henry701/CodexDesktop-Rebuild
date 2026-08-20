@@ -44,12 +44,15 @@ const linuxPlatform = `${platform}-${arch}`;
 const useSystemCli = isSystemCliEnabled(
   platform === 'linux' ? linuxPlatform : '',
 );
+const linuxBundleResources = path.join(__dirname, '..', 'src', linuxPlatform, 'bundle', 'resources');
 
 const srcPlatform = platform === 'darwin'
   ? (arch === 'arm64' ? 'mac-arm64' : 'mac-x64')
   : platform === 'win32' ? 'win' : linuxPlatform;
 
-const upstreamCli = path.join(__dirname, '..', 'src', srcPlatform, cliName);
+const upstreamCli = platform === 'linux' && fs.existsSync(path.join(linuxBundleResources, cliName))
+  ? path.join(linuxBundleResources, cliName)
+  : path.join(__dirname, '..', 'src', srcPlatform, cliName);
 const resourcesCli = path.join(__dirname, '..', 'resources', 'bin', binDir, cliName);
 
 /** @type {string | undefined} */
@@ -94,6 +97,10 @@ console.log(`[start-dev] USE_SYSTEM_CLI: ${platform === 'linux' && useSystemCli 
 console.log(`[start-dev] CLI Path: ${cliPath}`);
 console.log(`[start-dev] App Root: ${appEntry}`);
 
+const linuxResources = fs.existsSync(linuxBundleResources)
+  ? linuxBundleResources
+  : path.join(__dirname, '..', 'src', srcPlatform);
+
 const electronBin = require('electron');
 const child = spawn(electronBin, [appEntry], {
   cwd: path.join(__dirname, '..'),
@@ -103,10 +110,10 @@ const child = spawn(electronBin, [appEntry], {
     CODEX_CLI_PATH: cliPath,
     BUILD_FLAVOR: process.env.BUILD_FLAVOR || 'dev',
     ELECTRON_RENDERER_URL: process.env.ELECTRON_RENDERER_URL || 'app://-/index.html',
-    CODEX_ELECTRON_RESOURCES_PATH: path.join(__dirname, '..', 'src', srcPlatform),
-    CODEX_ELECTRON_BUNDLED_PLUGINS_RESOURCES_PATH: path.join(__dirname, '..', 'src', srcPlatform),
-    CODEX_NODE_REPL_PATH: path.join(__dirname, '..', 'src', srcPlatform, 'node_repl'),
-    CODEX_BROWSER_USE_NODE_PATH: path.join(__dirname, '..', 'src', srcPlatform, 'node'),
+    CODEX_ELECTRON_RESOURCES_PATH: linuxResources,
+    CODEX_ELECTRON_BUNDLED_PLUGINS_RESOURCES_PATH: linuxResources,
+    CODEX_NODE_REPL_PATH: path.join(linuxResources, 'node_repl'),
+    CODEX_BROWSER_USE_NODE_PATH: path.join(linuxResources, 'node'),
   },
 });
 

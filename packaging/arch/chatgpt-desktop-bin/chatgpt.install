@@ -1,0 +1,18 @@
+_fix_app_dir_mode() {
+  [[ -d usr/lib/chatgpt ]] && chmod 755 usr/lib/chatgpt
+}
+
+post_install() {
+  _fix_app_dir_mode
+  gtk-update-icon-cache -q -t -f usr/share/icons/hicolor 2>/dev/null || true
+  update-desktop-database -q usr/share/applications 2>/dev/null || true
+}
+
+post_upgrade() {
+  post_install "$@"
+}
+
+post_remove() {
+  gtk-update-icon-cache -q -t -f usr/share/icons/hicolor 2>/dev/null || true
+  update-desktop-database -q usr/share/applications 2>/dev/null || true
+}

@@ -15,7 +15,7 @@
 const fs = require("fs");
 const path = require("path");
 const { parse } = require("acorn");
-const { locateBundles, relPath, SRC_DIR } = require("./patch-util");
+const { locateBundles, relPath, SRC_DIR, parsePlatformArg, existingAsarPlatforms } = require("./patch-util");
 
 function walk(node, visitor) {
   if (!node || typeof node !== "object") return;
@@ -76,13 +76,11 @@ function collectPatches(ast, source) {
 function main() {
   const args = process.argv.slice(2);
   const isCheck = args.includes("--check");
-  const platform = args.find((a) =>
-    ["mac-arm64", "mac-x64", "win"].includes(a),
-  );
+  const platform = parsePlatformArg(args);
 
   const platforms = platform
     ? [platform]
-    : ["mac-arm64", "mac-x64", "win"].filter((p) =>
+    : existingAsarPlatforms().filter((p) =>
         fs.existsSync(path.join(SRC_DIR, p, "_asar", "webview", "assets")),
       );
 

@@ -82,4 +82,36 @@ test("lookup high-limit is idempotent", () => {
   assert.strictEqual(twice.status, "already");
 });
 
+const UNPATCHED_V814_QUERY =
+  "fPa=100,pPa=[`models`,`list`],mPa=Oo(Q,({limit:a})=>{return{queryFn:()=>Qg(u,n).sendRequest(`model/list`,{includeHidden:!0,cursor:null,limit:a})}})";
+
+const UNPATCHED_V814_LOOKUP =
+  "let{data:r}=await Qg(e,t).sendRequest(`model/list`,{includeHidden:!0,cursor:null,limit:100},{priority:`critical`});return n==null?r.find(e=>e.isDefault)??null:r.find(e=>e.model===n||e.id===n)??null";
+
+test("26.814 model/list query + default limit bump to 1e4", () => {
+  const { source, status } = patchQueryInSource(`${UNPATCHED_V814_QUERY};pHr=100,mHr=5e3`);
+  assert.strictEqual(status, "patched");
+  assert.match(source, /fPa=1e4,pPa=\[`models`,`list`\]/);
+  assert.match(source, /pHr=1e4,mHr=5e3/);
+  assert.match(
+    source,
+    /sendRequest\(`model\/list`,\{includeHidden:!0,cursor:null,limit:1e4\}/,
+  );
+});
+
+test("26.814 model/list query is idempotent", () => {
+  const once = patchQueryInSource(`${UNPATCHED_V814_QUERY};pHr=100,mHr=5e3`);
+  const twice = patchQueryInSource(once.source);
+  assert.strictEqual(twice.status, "already");
+});
+
+test("26.814 model/list lookup limit bumps via query transform", () => {
+  const { source, status } = patchQueryInSource(UNPATCHED_V814_LOOKUP);
+  assert.strictEqual(status, "patched");
+  assert.match(
+    source,
+    /sendRequest\(`model\/list`,\{includeHidden:!0,cursor:null,limit:1e4\},\{priority:`critical`\}\)/,
+  );
+});
+
 console.log("all passed");

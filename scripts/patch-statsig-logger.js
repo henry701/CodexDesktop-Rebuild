@@ -19,7 +19,7 @@
 const fs = require("fs");
 const path = require("path");
 const { parse } = require("acorn");
-const { locateBundles, relPath } = require("./patch-util");
+const { locateBundles, relPath, parsePlatformArg } = require("./patch-util");
 
 // ──────────────────────────────────────────────
 //  AST walker
@@ -165,7 +165,7 @@ function locateTargets(platform) {
 function main() {
   const args = process.argv.slice(2);
   const isCheck = args.includes("--check");
-  const platform = args.find((a) => a === "unix" || a === "win");
+  const platform = parsePlatformArg(args);
 
   const bundles = locateTargets(platform);
 

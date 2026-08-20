@@ -8,6 +8,35 @@ const path = require("path");
 const SRC_DIR = path.join(__dirname, "..", "src");
 const PROJECT_ROOT = path.join(__dirname, "..");
 
+/** Extracted ASAR dirs under src/. linux-* is the official ChatGPT .deb. */
+const PATCH_PLATFORMS = [
+  "linux-x64",
+  "linux-arm64",
+  "mac-arm64",
+  "mac-x64",
+  "win",
+  "unix",
+];
+
+/**
+ * @param {string[]} args
+ * @param {string} [fallback]
+ * @returns {string | undefined}
+ */
+function parsePlatformArg(args, fallback) {
+  return args.find((a) => PATCH_PLATFORMS.includes(a)) || fallback;
+}
+
+/**
+ * Platforms that already have an extracted `_asar/` tree.
+ * @returns {string[]}
+ */
+function existingAsarPlatforms() {
+  return PATCH_PLATFORMS.filter((p) =>
+    fs.existsSync(path.join(SRC_DIR, p, "_asar")),
+  );
+}
+
 /**
  * Locate bundles matching a filename pattern across platform directories.
  *
@@ -34,10 +63,9 @@ function locateBundles({ dir, pattern, platform }) {
   const getDir = dirMap[dir];
   if (!getDir) throw new Error(`Unknown dir type: ${dir}`);
 
-  const ALL_PLATFORMS = ["mac-arm64", "mac-x64", "win"];
   const platforms = platform
     ? [platform]
-    : ALL_PLATFORMS.filter((p) => fs.existsSync(getDir(p)));
+    : PATCH_PLATFORMS.filter((p) => fs.existsSync(getDir(p)));
 
   // Legacy fallback
   if (platforms.length === 0) {
@@ -82,4 +110,12 @@ function relPath(absPath) {
   return path.relative(PROJECT_ROOT, absPath);
 }
 
-module.exports = { locateBundles, relPath, SRC_DIR, PROJECT_ROOT };
+module.exports = {
+  existingAsarPlatforms,
+  locateBundles,
+  parsePlatformArg,
+  PATCH_PLATFORMS,
+  relPath,
+  SRC_DIR,
+  PROJECT_ROOT,
+};

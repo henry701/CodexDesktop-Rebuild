@@ -3,9 +3,8 @@
  * Prune local build/sync caches so repeated `npm run sync` / linux builds
  * do not accumulate multi-GB zip/extract leftovers.
  *
- * Default KEEP_VERSIONS=3 for packaging/arch/codex-desktop-bin artifacts
- * (Codex-linux-x64-*.zip and codex-desktop-*-x86_64.pkg.tar.zst), keyed by
- * app version (highest pkgrel kept per version).
+ * Default KEEP_VERSIONS=3 for packaging/arch/{chatgpt,codex}-desktop-bin artifacts
+ * (ChatGPT-linux-x64-*.zip, Codex-linux-x64-*.zip, and matching pacman pkgs).
  *
  * Also removes:
  *   - os.tmpdir()/codex-sync downloads + extract dirs (after sync)
@@ -24,7 +23,9 @@ const path = require("path");
 
 const PROJECT_ROOT = path.resolve(__dirname, "..");
 const PKG_DIR = path.join(PROJECT_ROOT, "packaging", "arch", "codex-desktop-bin");
+const CHATGPT_PKG_DIR = path.join(PROJECT_ROOT, "packaging", "arch", "chatgpt-desktop-bin");
 const TEMP_DIR = path.join(os.tmpdir(), "codex-sync");
+const LINUX_TEMP_DIR = path.join(os.tmpdir(), "chatgpt-linux-sync");
 const OUT_DIR = path.join(PROJECT_ROOT, "out");
 
 const args = process.argv.slice(2);
@@ -40,6 +41,7 @@ function rmrf(p) {
 
 function parseArtifact(filePath) {
   let base = path.basename(filePath);
+  base = base.replace(/^ChatGPT-linux-x64-/, "").replace(/^chatgpt-desktop-/, "");
   base = base.replace(/^Codex-linux-x64-/, "").replace(/^codex-desktop-/, "");
   base = base.replace(/-x86_64\.pkg\.tar\.zst$/, "").replace(/\.zip$/, "");
   if (/-(\d+)$/.test(base) && base.includes("-")) {
@@ -109,13 +111,18 @@ function pruneGlob(dir, pattern, label) {
 }
 
 function pruneSyncTemp() {
-  if (!fs.existsSync(TEMP_DIR)) {
-    console.log("[prune] codex-sync temp: none");
+  pruneOneTemp(TEMP_DIR, "codex-sync temp");
+  pruneOneTemp(LINUX_TEMP_DIR, "chatgpt-linux-sync temp");
+}
+
+function pruneOneTemp(dir, label) {
+  if (!fs.existsSync(dir)) {
+    console.log(`[prune] ${label}: none`);
     return;
   }
   let removed = 0;
-  for (const name of fs.readdirSync(TEMP_DIR)) {
-    const p = path.join(TEMP_DIR, name);
+  for (const name of fs.readdirSync(dir)) {
+    const p = path.join(dir, name);
     const st = fs.statSync(p);
     if (st.isDirectory() && /extract/i.test(name)) {
       console.log(`  drop  ${path.relative(os.tmpdir(), p)}/`);
@@ -123,28 +130,30 @@ function pruneSyncTemp() {
       removed++;
       continue;
     }
-    if (!KEEP_SYNC_ZIPS && st.isFile() && /\.(zip|msix)$/i.test(name)) {
+    if (!KEEP_SYNC_ZIPS && st.isFile() && /\.(zip|msix|deb|rpm)$/i.test(name)) {
       console.log(`  drop  ${path.relative(os.tmpdir(), p)}`);
       fs.unlinkSync(p);
       removed++;
     }
   }
-  // Remove empty temp root
   try {
-    if (fs.readdirSync(TEMP_DIR).length === 0) rmrf(TEMP_DIR);
+    if (fs.readdirSync(dir).length === 0) rmrf(dir);
   } catch {
     /* ignore */
   }
-  console.log(`[prune] codex-sync temp: removed ${removed} entries${KEEP_SYNC_ZIPS ? " (kept zips)" : ""}`);
+  console.log(`[prune] ${label}: removed ${removed} entries${KEEP_SYNC_ZIPS ? " (kept archives)" : ""}`);
 }
 
 function pruneMakepkgLeftovers() {
   let n = 0;
-  for (const name of ["src", "pkg"]) {
-    const p = path.join(PKG_DIR, name);
-    if (rmrf(p)) {
-      console.log(`  drop  packaging/arch/codex-desktop-bin/${name}/`);
-      n++;
+  for (const dir of [PKG_DIR, CHATGPT_PKG_DIR]) {
+    const rel = path.relative(PROJECT_ROOT, dir);
+    for (const name of ["src", "pkg"]) {
+      const p = path.join(dir, name);
+      if (rmrf(p)) {
+        console.log(`  drop  ${rel}/${name}/`);
+        n++;
+      }
     }
   }
   console.log(`[prune] makepkg leftovers: removed ${n}`);
@@ -153,8 +162,10 @@ function pruneMakepkgLeftovers() {
 function main() {
   console.log(`== prune-artifacts (KEEP_VERSIONS=${KEEP_VERSIONS}) ==`);
   pruneSyncTemp();
-  pruneGlob(PKG_DIR, "Codex-linux-x64-*.zip", "packaging zips");
-  pruneGlob(PKG_DIR, "codex-desktop-*-x86_64.pkg.tar.zst", "packaging pkgs");
+  pruneGlob(PKG_DIR, "Codex-linux-x64-*.zip", "legacy packaging zips");
+  pruneGlob(PKG_DIR, "codex-desktop-*-x86_64.pkg.tar.zst", "legacy packaging pkgs");
+  pruneGlob(CHATGPT_PKG_DIR, "ChatGPT-linux-x64-*.zip", "chatgpt packaging zips");
+  pruneGlob(CHATGPT_PKG_DIR, "chatgpt-desktop-*-x86_64.pkg.tar.zst", "chatgpt packaging pkgs");
   pruneMakepkgLeftovers();
   if (PRUNE_OUT) {
     if (rmrf(OUT_DIR)) console.log("[prune] out/: removed");

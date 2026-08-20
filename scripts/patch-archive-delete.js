@@ -14,7 +14,7 @@
  */
 const fs = require("fs");
 const acorn = require("acorn");
-const { locateBundles, relPath } = require("./patch-util");
+const { locateBundles, relPath, parsePlatformArg } = require("./patch-util");
 const { isCometixCodexEnabled } = require("./build-flags");
 
 // ─── Layer 1: app-main route injection ──────────────────────────
@@ -278,9 +278,7 @@ function main() {
     return;
   }
 
-  const platform = args.find((a) =>
-    ["mac-arm64", "mac-x64", "win"].includes(a),
-  );
+  const platform = parsePlatformArg(args);
 
   console.log("  [layer 1] app-main: delete-conversation route");
   const appMainBundles = locateBundles({

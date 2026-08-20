@@ -25,12 +25,12 @@
  *   node scripts/patch-remove-menu.js --check       # Dry-run: report matches
  */
 const fs = require("fs");
-const { locateBundles, relPath } = require("./patch-util");
+const { locateBundles, relPath, parsePlatformArg } = require("./patch-util");
 
 function main() {
   const args = process.argv.slice(2);
   const isCheck = args.includes("--check");
-  const platform = args.find((a) => ["mac-arm64", "mac-x64", "win"].includes(a));
+  const platform = parsePlatformArg(args);
 
   const bundles = locateBundles({
     dir: "build",
