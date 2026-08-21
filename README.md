@@ -240,9 +240,11 @@ helpers may still omit `linux`. The patch is idempotent (`already` vs `applied`)
 ## Install on Arch Linux
 
 A local PKGBUILD wraps the patched official Linux zip (OpenAI's Electron/Owl
-runtime, **no system Electron**). Pacman name is **`chatgpt-desktop`**. It
-installs next to `codex-desktop` (`/usr/lib/chatgpt` vs `/usr/lib/codex-desktop`);
-uninstall the old package after quitting Codex.
+runtime, **no system Electron**). Pacman name is **`chatgpt-desktop`**
+(`/usr/lib/chatgpt`). The legacy forge package remains at
+`packaging/arch/codex-desktop-bin` (`codex-desktop`, `/usr/lib/codex-desktop`);
+both stay buildable and can be installed side by side. Default Linux install is
+ChatGPT only.
 
 ```bash
 # codex + rg must resolve on PATH before build (e.g. openai-codex from AUR/pacman)
