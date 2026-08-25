@@ -14,6 +14,9 @@ Cross-platform Electron build for OpenAI Codex / ChatGPT Desktop.
 The fork tracks OpenAI's published desktop apps with as little extra surface
 area as possible. Linux no longer rebuilds the macOS ASAR through electron-forge:
 it patches the official Linux ChatGPT `.deb` and reuses that Electron/Owl runtime.
+Haleclipse CI still builds Codex-from-macOS-ZIP; this fork’s default Linux
+product and GitHub Actions matrix are not the same. See
+[docs/FORK_DIVERGENCE.md](docs/FORK_DIVERGENCE.md).
 
 | Principle | What it means here |
 |---|---|
@@ -326,11 +329,19 @@ npm run dev
 
 ## CI/CD
 
-GitHub Actions automatically builds on:
-- Push to `master`
-- Tag `v*` → Creates draft release
+**Sync Upstream & Patch is parked** (2026-08-25). The daily cron is off;
+the workflow is disabled in the Actions UI until the fork-only Linux /
+Electron-cache failures are fixed. Details and a re-enable checklist:
+[docs/FORK_DIVERGENCE.md](docs/FORK_DIVERGENCE.md).
 
-CI uses Node 24 (see `.nvmrc`), with the same `ensure-electron-dist` workaround as local builds.
+| Workflow | Trigger | State |
+|----------|---------|--------|
+| `sync.yml` (OpenAI app sync + patch + build + draft release) | `workflow_dispatch` only | Disabled in UI |
+| `build.yml` (same matrix, no detect/release) | `workflow_dispatch` | Enabled; same Linux/mac/win holes |
+
+CI Node is 24 (`.nvmrc`). Local Linux builds use `ensure-electron-dist`;
+that script’s cache lookup is Linux-only, which is why macOS/Windows
+runners fail `npm ci`.
 
 ## Git remotes
 
