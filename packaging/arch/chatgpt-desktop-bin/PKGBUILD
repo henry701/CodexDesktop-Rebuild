@@ -8,7 +8,7 @@
 # Never run the upstream Debian postinst. It writes apt sources + a signing key.
 
 pkgname=chatgpt-desktop
-pkgver=26.814.41957
+pkgver=26.818.61809
 pkgrel=1
 pkgdesc="OpenAI ChatGPT desktop (official Linux bundle, locally patched)"
 arch=('x86_64')
@@ -47,7 +47,7 @@ source=(
   "LICENSE"
   "LICENSE.electron"
 )
-sha256sums=('83744ee7876ae76fd5a16539613f47d7dc9fd59f5f86c256ec3e9aa458b45307'
+sha256sums=('edf172babe68a8e297ce761d7c08705e1ddae22639d1d7579df5bdba1048de8d'
             'faa141199d78f98011501b85061e170a14ae75d5d32cf2b7cc62c278ea8d4e2c'
             '1ff998dded917c5ca6c51d1a2dd13a1766faae511cf6a275bae80bf1169e51a0'
             'cfe031774dd6aabdceca35338f329bc4844592767d043b7b4a56d8fb097dffd0'
