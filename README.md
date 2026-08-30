@@ -176,12 +176,14 @@ CLI equivalents: `--use-system-cli`, `--no-system-cli`, `--use-cometix-codex`
 ASAR patch for [**codex-shim**](https://github.com/henry701/codex-shim) integration (Statsig allowlist bypass + sidebar
 `modelProviders` filter). **Unlimited model list (single `limit:1e4` fetch) is always applied** via
 `patch-model-list-pagination.js` in `BASE_PATCHES` (upstream defaults to 100).
+**Model-picker search** is also always-on (`patch-model-picker-search.js`): a search field is injected into the `/models` slash submenu and the clicked Model flyout when the list has 8+ entries (large BYOK catalogs). Official short catalogs are unchanged.
 
 Verify with:
 ```bash
 USE_SHIM_MODEL_PICKER=1 npm run patch:linux-x64
 npm run patch:linux-x64:shim-picker   # convenience alias
 node scripts/patch-model-list-pagination.js linux-x64 --check
+node scripts/patch-model-picker-search.js linux-x64 --check
 node scripts/verify-shim-picker-patch.js linux-x64
 ```
 
@@ -318,6 +320,7 @@ npm run dev
 │   ├── ensure-electron-dist.js
 │   ├── linux-official.js / sync-linux-official.js / prepare-linux-official.js
 │   ├── patch-all.js      # Runs all BASE_PATCHES in sequence
+│   ├── patch-model-picker-search.js  # Search box in /models + click picker
 │   ├── patch-remove-menu.js  # Suppress GTK/KDE menu bar on Linux
 │   ├── ...
 ├── vendor/              # better-sqlite3 Electron 42 tarball

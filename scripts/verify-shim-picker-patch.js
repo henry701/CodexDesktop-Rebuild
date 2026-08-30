@@ -13,6 +13,14 @@ const LOOKUP_PAGINATION_OK =
   /let\{data:\w+\}=await \$?\w+\(`list-models-for-host`,\{hostId:\w+,includeHidden:!0,cursor:null,limit:1e4(?:,priority:`critical`)?\}|sendRequest\(`model\/list`,\{includeHidden:!0,cursor:null,limit:1e4\}/;
 const SIDEBAR_OK =
   /listRecentThreads\(\{cursor:\w+,limit:\w+,useStateDbOnly:\w+=!1(?:,background:\w+=!1)?\}\)\{let \w+=\{[^}]*modelProviders:\[\],archived:!1|getCompatibleThreadSortKey\(this\.recentConversationSortKey\),modelProviders:\[\],archived:!1/;
+const MODEL_SEARCH_OK =
+  /function cdrModelPickerSearch\(/;
+const MODEL_SEARCH_SLASH_OK =
+  /function cdrModelPickerSearchSlash\(/;
+const MODEL_SEARCH_CLICK_OK =
+  /cdrModelPickerSearch,\{jsx:\w+,items:m\?\?\[\]/;
+const MODEL_SEARCH_YFA_OK =
+  /cdrModelPickerSearchSlash,\{jsx:\w+,Menu:\w+/;
 
 function assetsDir(platform) {
   return path.join(SRC_DIR, platform, "_asar", "webview", "assets");
@@ -55,6 +63,15 @@ function main() {
 
   const lookup = findFilesMatching(dir, LOOKUP_PAGINATION_OK);
   if (!check("model lookup pagination", lookup, LOOKUP_PAGINATION_OK)) ok = false;
+
+  const modelSearch = findFilesMatching(dir, MODEL_SEARCH_OK);
+  if (!check("model picker search helper", modelSearch, MODEL_SEARCH_OK)) ok = false;
+  const modelSearchSlash = findFilesMatching(dir, MODEL_SEARCH_SLASH_OK);
+  if (!check("model picker slash search", modelSearchSlash, MODEL_SEARCH_SLASH_OK)) ok = false;
+  const modelSearchClick = findFilesMatching(dir, MODEL_SEARCH_CLICK_OK);
+  if (!check("model picker click search", modelSearchClick, MODEL_SEARCH_CLICK_OK)) ok = false;
+  const modelSearchYfa = findFilesMatching(dir, MODEL_SEARCH_YFA_OK);
+  if (!check("model picker slash yFa wrap", modelSearchYfa, MODEL_SEARCH_YFA_OK)) ok = false;
 
   const sidebar = findFilesMatching(dir, SIDEBAR_OK);
   if (sidebar.length > 0) {
