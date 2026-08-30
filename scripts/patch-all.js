@@ -29,7 +29,6 @@ const BASE_PATCHES = [
   "patch-remove-menu.js",
   "patch-linux-chrome.js",
   "patch-model-list-pagination.js",
-  "patch-model-picker-search.js",
   "patch-fast-mode.js",
   "patch-plugin-auth.js",
   "patch-updater.js",

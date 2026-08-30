@@ -9,7 +9,7 @@
 
 pkgname=chatgpt-desktop
 pkgver=26.818.61809
-pkgrel=2
+pkgrel=3
 pkgdesc="OpenAI ChatGPT desktop (official Linux bundle, locally patched)"
 arch=('x86_64')
 url="https://github.com/henry701/CodexDesktop-Rebuild"
@@ -47,7 +47,7 @@ source=(
   "LICENSE"
   "LICENSE.electron"
 )
-sha256sums=('fbaff32ddbb4c0b90195a03849948deaed4912ee14c6dbcc7e01457842676753'
+sha256sums=('fccd8060bdefc888b456f8b1179dc577a90b0bbac3c42e6b55a0918d65d22a23'
             'faa141199d78f98011501b85061e170a14ae75d5d32cf2b7cc62c278ea8d4e2c'
             '1ff998dded917c5ca6c51d1a2dd13a1766faae511cf6a275bae80bf1169e51a0'
             'cfe031774dd6aabdceca35338f329bc4844592767d043b7b4a56d8fb097dffd0'
