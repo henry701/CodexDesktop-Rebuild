@@ -76,4 +76,14 @@ test("BASE_PATCHES does not rewrite ChatGPT's in-app home default", () => {
   assert.ok(!fs.existsSync(path.join(__dirname, "../patch-default-chatgpt-mode.js")));
 });
 
+test("BASE_PATCHES never disables the desktop pet", () => {
+  const patchAll = fs.readFileSync(path.join(__dirname, "../patch-all.js"), "utf8");
+  assert.doesNotMatch(patchAll, /patch-linux-wayland-keyboard/);
+  const wayland = fs.readFileSync(path.join(__dirname, "../patch-linux-wayland-keyboard.js"), "utf8");
+  assert.doesNotMatch(wayland, /pet-open-linux-skip/);
+  assert.doesNotMatch(wayland, /pet-prewarm-linux-skip/);
+  assert.doesNotMatch(wayland, /pet-reconcile-linux-skip/);
+  assert.doesNotMatch(wayland, /pet-disable-composition-coordinator-linux/);
+});
+
 console.log("all linux-official tests passed");

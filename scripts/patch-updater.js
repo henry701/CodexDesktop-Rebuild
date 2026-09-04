@@ -1,14 +1,15 @@
 #!/usr/bin/env node
 /**
- * patch-updater.js — Disable Sparkle (macOS) and Windows auto-updater
+ * patch-updater.js — Disable Sparkle, Windows, and Linux package auto-updaters
  *
- * AST match: in the file containing shouldIncludeSparkle / shouldIncludeUpdater,
- * find these method definitions and replace their bodies to return false.
+ * AST match: in files that mention any shouldInclude*Updater method, replace
+ * the method body so it returns false. Linux matters on this fork: the official
+ * package updater would overwrite a locally patched install.
  *
- * Specifically targets:
- *   shouldIncludeSparkle(e,t,n){return ...}  → return !1
- *   shouldIncludeWindowsUpdater(e,t,n){return ...}  → return !1
- *   shouldIncludeUpdater(e,t,n){return ...}  → return !1
+ * Targets:
+ *   shouldIncludeSparkle / WindowsUpdater / WindowsMsixUpdater
+ *   shouldIncludeLinuxPackageUpdater / shouldIncludeUpdater
+ *   → return !1
  */
 const fs = require("fs");
 const path = require("path");
@@ -19,6 +20,7 @@ const UPDATER_METHODS = new Set([
   "shouldIncludeSparkle",
   "shouldIncludeWindowsUpdater",
   "shouldIncludeWindowsMsixUpdater",
+  "shouldIncludeLinuxPackageUpdater",
   "shouldIncludeUpdater",
 ]);
 
@@ -40,13 +42,16 @@ function collectPatches(ast, source) {
   const patches = [];
 
   walk(ast, (node) => {
-    // Match: Property with key being an updater method name and value being a FunctionExpression
-    if (node.type !== "Property") return;
     const keyName = node.key?.name || node.key?.value;
     if (!UPDATER_METHODS.has(keyName)) return;
 
-    const fn = node.value;
-    if (fn?.type !== "FunctionExpression") return;
+    let fn = null;
+    if (node.type === "Property" && node.value?.type === "FunctionExpression") {
+      fn = node.value;
+    } else if (node.type === "MethodDefinition" && node.value?.type === "FunctionExpression") {
+      fn = node.value;
+    }
+    if (!fn) return;
     const body = fn.body;
     if (!body || body.type !== "BlockStatement") return;
     if (body.body.length !== 1) return;
@@ -84,8 +89,10 @@ function locateTargets(platform) {
       const fp = path.join(buildDir, f);
       const src = fs.readFileSync(fp, "utf-8");
       if (
-        src.includes("shouldIncludeSparkle") &&
-        src.includes("shouldIncludeUpdater")
+        src.includes("shouldIncludeSparkle") ||
+        src.includes("shouldIncludeUpdater") ||
+        src.includes("shouldIncludeWindowsUpdater") ||
+        src.includes("shouldIncludeLinuxPackageUpdater")
       ) {
         targets.push({ platform: plat, path: fp });
       }
@@ -127,4 +134,8 @@ function main() {
   }
 }
 
-main();
+module.exports = { collectPatches, UPDATER_METHODS };
+
+if (require.main === module) {
+  main();
+}

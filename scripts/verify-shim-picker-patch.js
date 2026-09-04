@@ -6,11 +6,16 @@ const fs = require("fs");
 const path = require("path");
 const { SRC_DIR } = require("./patch-util");
 
-const PICKER_OK = /useHiddenModels:\w\}\)\{let \w+=\[\],\w+=null,\w+=!1,|!1\?n\.has\(i\.model\):!i\.hidden/;
+const PICKER_OK =
+  /useHiddenModels:\w\}\)\{let \w+=\[\],\w+=null,\w+=!1,|!1\?n\.has\(i\.model\):!i\.hidden|!1\?n\.has\(a\.model\):!a\.hidden/;
 const PAGINATION_OK =
   /queryFn:\(\)=>\w+\(`list-models-for-host`,\{hostId:\w+,includeHidden:!0,cursor:null,limit:1e4\}\)|sendRequest\(`model\/list`,\{includeHidden:!0,cursor:null,limit:1e4\}\)/;
 const LOOKUP_PAGINATION_OK =
   /let\{data:\w+\}=await \$?\w+\(`list-models-for-host`,\{hostId:\w+,includeHidden:!0,cursor:null,limit:1e4(?:,priority:`critical`)?\}|sendRequest\(`model\/list`,\{includeHidden:!0,cursor:null,limit:1e4\}/;
+const PICKER_HEIGHT_OK =
+  /vertical-scroll-fade-mask flex max-h-\[480px\] flex-col overflow-y-auto/;
+const MENU_ITEM_PAD_OK =
+  /--menu-item-height:calc\(var\(--spacing\) \* 9\)|min-h-\[var\(--menu-item-height,2\.25rem\)\]/;
 const SIDEBAR_OK =
   /listRecentThreads\(\{cursor:\w+,limit:\w+,useStateDbOnly:\w+=!1(?:,background:\w+=!1)?\}\)\{let \w+=\{[^}]*modelProviders:\[\],archived:!1|getCompatibleThreadSortKey\(this\.recentConversationSortKey\),modelProviders:\[\],archived:!1/;
 
@@ -22,7 +27,7 @@ function findFilesMatching(dir, pattern) {
   if (!fs.existsSync(dir)) return [];
   return fs
     .readdirSync(dir)
-    .filter((f) => f.endsWith(".js"))
+    .filter((f) => f.endsWith(".js") || f.endsWith(".css"))
     .map((f) => path.join(dir, f))
     .filter((filePath) => pattern.test(fs.readFileSync(filePath, "utf8")));
 }
@@ -55,6 +60,12 @@ function main() {
 
   const lookup = findFilesMatching(dir, LOOKUP_PAGINATION_OK);
   if (!check("model lookup pagination", lookup, LOOKUP_PAGINATION_OK)) ok = false;
+
+  const height = findFilesMatching(dir, PICKER_HEIGHT_OK);
+  if (!check("model picker height", height, PICKER_HEIGHT_OK)) ok = false;
+
+  const pad = findFilesMatching(dir, MENU_ITEM_PAD_OK);
+  if (!check("model picker row padding", pad, MENU_ITEM_PAD_OK)) ok = false;
 
   const sidebar = findFilesMatching(dir, SIDEBAR_OK);
   if (sidebar.length > 0) {

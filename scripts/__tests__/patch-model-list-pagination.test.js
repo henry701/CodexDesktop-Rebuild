@@ -114,4 +114,26 @@ test("26.814 model/list lookup limit bumps via query transform", () => {
   );
 });
 
+const UNPATCHED_V825_HOOK =
+  "function XG(e){let t=(0,kga.c)(29),n=e?.hostId??`local`,r=e?.limit??100,i=fO(n);return{queryFn:()=>Nb(d,r).sendRequest(`model/list`,{includeHidden:!0,cursor:null,limit:o})}}";
+
+const UNPATCHED_V825_PAGER = "CDr=100,wDr=5e3";
+
+test("26.825 picker hook default + queryFn limit:o bump to 1e4", () => {
+  const { source, status } = patchQueryInSource(`${UNPATCHED_V825_HOOK};${UNPATCHED_V825_PAGER}`);
+  assert.strictEqual(status, "patched");
+  assert.match(source, /e\?\.limit\?\?1e4/);
+  assert.match(source, /CDr=1e4,wDr=5e3/);
+  assert.match(
+    source,
+    /sendRequest\(`model\/list`,\{includeHidden:!0,cursor:null,limit:1e4\}/,
+  );
+});
+
+test("26.825 picker hook is idempotent", () => {
+  const once = patchQueryInSource(`${UNPATCHED_V825_HOOK};${UNPATCHED_V825_PAGER}`);
+  const twice = patchQueryInSource(once.source);
+  assert.strictEqual(twice.status, "already");
+});
+
 console.log("all passed");

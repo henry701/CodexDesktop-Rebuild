@@ -175,7 +175,12 @@ CLI equivalents: `--use-system-cli`, `--no-system-cli`, `--use-cometix-codex`
 
 ASAR patch for [**codex-shim**](https://github.com/henry701/codex-shim) integration (Statsig allowlist bypass + sidebar
 `modelProviders` filter). **Unlimited model list (single `limit:1e4` fetch) is always applied** via
-`patch-model-list-pagination.js` in `BASE_PATCHES` (upstream defaults to 100).
+`patch-model-list-pagination.js` in `BASE_PATCHES` (upstream defaults to 100; 26.825 uses picker hook
+`e?.limit??100` / pager `CDr=100`). **Picker scroller height** (`max-h-[250px]` → `480px`) and **Electron
+row padding** (`--menu-item-height` / `--menu-item-padding`, otherwise `0px`) are always applied via
+`patch-model-picker-height.js`. 26.825 allowlist needles: `n.has(a.model)` / `a.useHiddenModels`.
+Linux auto-update is disabled via `shouldIncludeLinuxPackageUpdater` in `patch-updater.js`. Pets stay
+enabled (`patch-linux-wayland-keyboard.js` is not in `BASE_PATCHES`).
 
 Verify with:
 ```bash

@@ -4,8 +4,8 @@
  *
  * Symptoms: menu keys work, mouse/paste work, physical keyboard dead in web fields.
  * Root cause (26.623+): avatar-overlay / native-pet child BrowserWindows steal Wayland
- * text-input (26.602.x has no pet overlay). Not in default patch-all.js — pin 26.602 or
- * opt in manually: node scripts/patch-linux-wayland-keyboard.js unix
+ * text-input (26.602.x has no pet overlay). Not in default patch-all.js — pets stay
+ * enabled; this file only opts into keyboard-focus guards, never hides the pet.
  *
  * Usage:
  *   node scripts/patch-linux-wayland-keyboard.js [platform]
@@ -49,26 +49,6 @@ const REPLACEMENTS = [
       "setKeyboardInteraction(e,t){let n=this.window;if(!(n==null||n.isDestroyed()||n.webContents.id!==e)){if(this.applyPointerInteractivityPolicy(),!t){n.setFocusable(!1);return}n.setFocusable(!0),n.show(),process.platform===`darwin`&&a.app.focus({steal:!0}),n.focus(),n.webContents.focus(),this.windowManager.sendMessageToWebContents(n.webContents,{type:`avatar-overlay-keyboard-interaction-ready`})}}",
     to:
       "setKeyboardInteraction(e,t){let n=this.window;if(!(n==null||n.isDestroyed()||n.webContents.id!==e)){if(this.applyPointerInteractivityPolicy(),!t){n.setFocusable(!1);return}if(process.platform===`linux`)return;n.setFocusable(!0),n.show(),process.platform===`darwin`&&a.app.focus({steal:!0}),n.focus(),n.webContents.focus(),this.windowManager.sendMessageToWebContents(n.webContents,{type:`avatar-overlay-keyboard-interaction-ready`})}}",
-  },
-  {
-    id: "pet-disable-composition-coordinator-linux",
-    from: "ensureCoordinator(){let e=this.overlayWindow",
-    to: "ensureCoordinator(){if(process.platform===`linux`)return;let e=this.overlayWindow",
-  },
-  {
-    id: "pet-prewarm-linux-skip",
-    from: "prewarm(){this.ensureWindow().catch",
-    to: "prewarm(){if(process.platform===`linux`)return;this.ensureWindow().catch",
-  },
-  {
-    id: "pet-open-linux-skip",
-    from: "async open(e,{forcePetView:t=!1,persistPetIntent:n=!0}={}){n&&",
-    to: "async open(e,{forcePetView:t=!1,persistPetIntent:n=!0}={}){if(process.platform===`linux`)return;n&&",
-  },
-  {
-    id: "pet-reconcile-linux-skip",
-    from: "reconcileWindowVisibility(){if(this.isAppQuitting)return",
-    to: "reconcileWindowVisibility(){if(process.platform===`linux`)return;if(this.isAppQuitting)return",
   },
 ];
 

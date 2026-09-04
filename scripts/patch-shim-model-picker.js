@@ -27,6 +27,12 @@ const PICKER_V814_TO = "!1?n.has(i.model):!i.hidden";
 const PICKER_V814_FILTER_FROM =
   "i.useHiddenModels&&r!==`amazonBedrock`?i.availableModels.has(e.model):!e.hidden";
 const PICKER_V814_FILTER_TO = "!1?i.availableModels.has(e.model):!e.hidden";
+/** 26.825: `eai` uses `a` for the model row; filter uses `a.useHiddenModels`. */
+const PICKER_V825_FROM = "o&&!i&&t!==`amazonBedrock`?n.has(a.model):!a.hidden";
+const PICKER_V825_TO = "!1?n.has(a.model):!a.hidden";
+const PICKER_V825_FILTER_FROM =
+  "a.useHiddenModels&&i!==`amazonBedrock`?a.availableModels.has(e.model):!e.hidden";
+const PICKER_V825_FILTER_TO = "!1?a.availableModels.has(e.model):!e.hidden";
 
 /**
  * Sidebar recent-threads filter: modelProviders:null → [] so shim threads show.
@@ -71,7 +77,10 @@ function replaceOnceRegex(source, re, buildReplacement, alreadyRe) {
 }
 
 function patchPicker(source) {
-  if (source.includes(PICKER_V814_TO) && source.includes(PICKER_V814_FILTER_TO)) {
+  const allowlisted =
+    /!1\?[$A-Za-z_]\w*\.has\([$A-Za-z_]\w*\.model\):![$A-Za-z_]\w*\.hidden/.test(source) &&
+    /!1\?[$A-Za-z_]\w*\.availableModels\.has\([$A-Za-z_]\w*\.model\):![$A-Za-z_]\w*\.hidden/.test(source);
+  if (allowlisted) {
     return { source, status: "already" };
   }
   let next = source;
@@ -82,6 +91,30 @@ function patchPicker(source) {
   }
   if (next.includes(PICKER_V814_FILTER_FROM)) {
     next = next.replace(PICKER_V814_FILTER_FROM, PICKER_V814_FILTER_TO);
+    changed = true;
+  }
+  if (next.includes(PICKER_V825_FROM)) {
+    next = next.replace(PICKER_V825_FROM, PICKER_V825_TO);
+    changed = true;
+  }
+  if (next.includes(PICKER_V825_FILTER_FROM)) {
+    next = next.replace(PICKER_V825_FILTER_FROM, PICKER_V825_FILTER_TO);
+    changed = true;
+  }
+  const genericAllow = next.replace(
+    /([$A-Za-z_]\w*)&&!([$A-Za-z_]\w*)&&([$A-Za-z_]\w*)!==`amazonBedrock`\?([$A-Za-z_]\w*)\.has\(([$A-Za-z_]\w*)\.model\):!([$A-Za-z_]\w*)\.hidden/g,
+    "!1?$4.has($5.model):!$6.hidden",
+  );
+  if (genericAllow !== next) {
+    next = genericAllow;
+    changed = true;
+  }
+  const genericFilter = next.replace(
+    /([$A-Za-z_]\w*)\.useHiddenModels&&([$A-Za-z_]\w*)!==`amazonBedrock`\?([$A-Za-z_]\w*)\.availableModels\.has\(([$A-Za-z_]\w*)\.model\):!([$A-Za-z_]\w*)\.hidden/g,
+    "!1?$3.availableModels.has($4.model):!$5.hidden",
+  );
+  if (genericFilter !== next) {
+    next = genericFilter;
     changed = true;
   }
   if (changed) return { source: next, status: "patched" };
@@ -161,4 +194,11 @@ function main() {
   if (!ok) process.exit(1);
 }
 
-main();
+module.exports = {
+  patchPicker,
+  patchSidebar,
+};
+
+if (require.main === module) {
+  main();
+}

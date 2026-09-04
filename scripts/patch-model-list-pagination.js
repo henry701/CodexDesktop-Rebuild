@@ -51,6 +51,12 @@ const DEFAULT_LIMIT_FROM = "fPa=100,pPa=[`models`,`list`]";
 const DEFAULT_LIMIT_TO = `fPa=${HIGH_LIMIT},pPa=[\`models\`,\`list\`]`;
 const PAGER_LIMIT_FROM = "pHr=100,mHr=5e3";
 const PAGER_LIMIT_TO = `pHr=${HIGH_LIMIT},mHr=5e3`;
+/** 26.825: SDr cursor pager default page size. */
+const PAGER_V825_FROM = "CDr=100,wDr=5e3";
+const PAGER_V825_TO = `CDr=${HIGH_LIMIT},wDr=5e3`;
+/** 26.825: picker hook `XG` defaults `limit` to 100, then passes it as `limit:o`. */
+const XG_LIMIT_RE = /e\?\.hostId\?\?`local`,(\w+)=e\?\.limit\?\?100/;
+const XG_LIMIT_ALREADY = /e\?\.hostId\?\?`local`,\w+=e\?\.limit\?\?1e4/;
 
 /**
  * Single-page model list query used by the picker (upstream default).
@@ -138,6 +144,14 @@ function patchQueryInSource(source) {
     next = next.replace(PAGER_LIMIT_FROM, PAGER_LIMIT_TO);
     changed = true;
   }
+  if (next.includes(PAGER_V825_FROM)) {
+    next = next.replace(PAGER_V825_FROM, PAGER_V825_TO);
+    changed = true;
+  }
+  if (XG_LIMIT_RE.test(next)) {
+    next = next.replace(XG_LIMIT_RE, (_, id) => `e?.hostId??\`local\`,${id}=e?.limit??${HIGH_LIMIT}`);
+    changed = true;
+  }
   if (QUERY_MODEL_LIST_RE.test(next)) {
     next = next.replace(new RegExp(QUERY_MODEL_LIST_RE.source, "g"), QUERY_MODEL_LIST_ALREADY);
     changed = true;
@@ -147,11 +161,11 @@ function patchQueryInSource(source) {
     changed = true;
   }
 
-  if (QUERY_ALREADY.test(next) && !changed) return { source: next, status: "already" };
   if (
     !changed &&
-    next.includes(DEFAULT_LIMIT_TO) &&
-    next.includes(QUERY_MODEL_LIST_ALREADY)
+    (QUERY_ALREADY.test(next) ||
+      next.includes(QUERY_MODEL_LIST_ALREADY) ||
+      next.includes(QUERY_MODEL_LIST_ALT_ALREADY))
   ) {
     return { source: next, status: "already" };
   }
@@ -202,7 +216,11 @@ function applyGroup(dir, group, patchFn, dryRun) {
       !source.includes("list-models-for-host") &&
       !source.includes("model/list") &&
       !source.includes(DEFAULT_LIMIT_FROM) &&
-      !source.includes(DEFAULT_LIMIT_TO)
+      !source.includes(DEFAULT_LIMIT_TO) &&
+      !source.includes(PAGER_LIMIT_FROM) &&
+      !source.includes(PAGER_V825_FROM) &&
+      !XG_LIMIT_RE.test(source) &&
+      !XG_LIMIT_ALREADY.test(source)
     ) {
       continue;
     }
@@ -257,6 +275,7 @@ module.exports = {
   LOOKUP_ALREADY,
   QUERY_MODEL_LIST_ALREADY,
   DEFAULT_LIMIT_TO,
+  PAGER_V825_TO,
   patchQueryInSource,
   patchLookupInSource,
 };
