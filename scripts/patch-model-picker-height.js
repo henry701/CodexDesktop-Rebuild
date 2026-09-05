@@ -19,6 +19,11 @@ const ELECTRON_TOKENS_FROM =
   "[data-codex-window-type=electron]{--text-sm:13px;--text-xs:12px;--font-weight-medium:500;background:0 0;overflow:hidden}";
 const ELECTRON_TOKENS_TO =
   "[data-codex-window-type=electron]{--text-sm:13px;--text-xs:12px;--font-weight-medium:500;background:0 0;overflow:hidden;--menu-item-padding:calc(var(--spacing) * 2) calc(var(--spacing) * 2.5);--menu-item-height:calc(var(--spacing) * 9)}";
+/** 26.901+: Electron block also sets --vscode-font-weight. */
+const ELECTRON_TOKENS_V901_FROM =
+  "[data-codex-window-type=electron]{--text-sm:13px;--text-xs:12px;--font-weight-medium:500;--vscode-font-weight:430;background:0 0;overflow:hidden}";
+const ELECTRON_TOKENS_V901_TO =
+  "[data-codex-window-type=electron]{--text-sm:13px;--text-xs:12px;--font-weight-medium:500;--vscode-font-weight:430;background:0 0;overflow:hidden;--menu-item-padding:calc(var(--spacing) * 2) calc(var(--spacing) * 2.5);--menu-item-height:calc(var(--spacing) * 9)}";
 
 const REPLACEMENTS = [
   { from: SHORT_SCROLL, to: TALL_SCROLL },
@@ -31,6 +36,7 @@ const REPLACEMENTS = [
     to: "min-height:var(--menu-item-height,2.25rem)",
   },
   { from: ELECTRON_TOKENS_FROM, to: ELECTRON_TOKENS_TO },
+  { from: ELECTRON_TOKENS_V901_FROM, to: ELECTRON_TOKENS_V901_TO },
 ];
 
 function patchInSource(source) {

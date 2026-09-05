@@ -179,6 +179,8 @@ ASAR patch for [**codex-shim**](https://github.com/henry701/codex-shim) integrat
 `e?.limit??100` / pager `CDr=100`). **Picker scroller height** (`max-h-[250px]` → `480px`) and **Electron
 row padding** (`--menu-item-height` / `--menu-item-padding`, otherwise `0px`) are always applied via
 `patch-model-picker-height.js`. 26.825 allowlist needles: `n.has(a.model)` / `a.useHiddenModels`.
+26.901 Electron CSS also sets `--vscode-font-weight:430`; the height patcher still injects
+`--menu-item-padding` / `--menu-item-height` on that block.
 Linux auto-update is disabled via `shouldIncludeLinuxPackageUpdater` in `patch-updater.js`. Pets stay
 enabled (`patch-linux-wayland-keyboard.js` is not in `BASE_PATCHES`).
 
@@ -235,8 +237,9 @@ Verify with:
 node scripts/patch-linux-chrome.js linux-x64 --check
 ```
 
-The official Linux ASAR already uses a Linux titlebar overlay in 26.814; opaque-surface
-helpers may still omit `linux`. The patch is idempotent (`already` vs `applied`).
+The official Linux ASAR already uses a Linux titlebar overlay in 26.814+; opaque-surface
+helpers may still omit `linux`. 26.901 renamed the helper (`L9` / `TRe` / `ERe`). The
+patch is idempotent (`already` vs `applied`).
 
 ## Other build notes
 

@@ -59,6 +59,21 @@ const REPLACEMENTS = [
     to:
       "isFocused:t,platform:n}){return!t&&!A9(e)&&(n===`darwin`||n===`linux`)}",
   },
+  // 26.901+: same opaque helpers, renamed L9.
+  {
+    id: "linux-opaque-surface-tre",
+    from:
+      "opaqueWindowsEnabled:t,platform:n}){return t&&!L9(e)&&(n===`darwin`||n===`win32`)}",
+    to:
+      "opaqueWindowsEnabled:t,platform:n}){return t&&!L9(e)&&(n===`darwin`||n===`win32`||n===`linux`)}",
+  },
+  {
+    id: "linux-opaque-surface-ere",
+    from:
+      "isFocused:t,platform:n}){return!t&&!L9(e)&&n===`darwin`}",
+    to:
+      "isFocused:t,platform:n}){return!t&&!L9(e)&&(n===`darwin`||n===`linux`)}",
+  },
 ];
 
 function patchSource(source, { isCheck }) {
@@ -154,4 +169,8 @@ function main() {
   if (isCheck && anyChange) process.exit(2);
 }
 
-main();
+module.exports = { patchSource, REPLACEMENTS };
+
+if (require.main === module) {
+  main();
+}

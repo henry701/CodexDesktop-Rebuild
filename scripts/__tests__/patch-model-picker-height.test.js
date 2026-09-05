@@ -63,6 +63,17 @@ test("gives Electron the browser menu-item padding tokens", () => {
   assert.match(source, /--menu-item-padding:calc\(var\(--spacing\) \* 2\)/);
 });
 
+const ELECTRON_CSS_V901 =
+  "[data-codex-window-type=electron]{--text-sm:13px;--text-xs:12px;--font-weight-medium:500;--vscode-font-weight:430;background:0 0;overflow:hidden}";
+
+test("26.901 Electron tokens with vscode font-weight still get menu-item padding", () => {
+  const { source, status } = patchInSource(ELECTRON_CSS_V901);
+  assert.strictEqual(status, "patched");
+  assert.match(source, /--vscode-font-weight:430/);
+  assert.match(source, /--menu-item-height:calc\(var\(--spacing\) \* 9\)/);
+  assert.match(source, /--menu-item-padding:calc\(var\(--spacing\) \* 2\)/);
+});
+
 const CMDK_CSS =
   "._comboboxRow_szifs_2[cmdk-item]{min-height:var(--menu-item-height,0px)!important;padding:var(--menu-item-padding,var(--padding-row-y) var(--padding-row-x))!important}";
 
