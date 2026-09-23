@@ -15,7 +15,7 @@ const LOOKUP_PAGINATION_OK =
 const PICKER_HEIGHT_OK =
   /vertical-scroll-fade-mask flex max-h-\[480px\] flex-col overflow-y-auto/;
 const MENU_ITEM_PAD_OK =
-  /--menu-item-height:calc\(var\(--spacing\) \* 9\)|min-h-\[var\(--menu-item-height,2\.25rem\)\]/;
+  /--(?:app-)?menu-item-height:calc\(var\(--spacing\) \* 9\)|min-h-\[var\(--(?:app-)?menu-item-height,2\.25rem\)\]/;
 const SIDEBAR_OK =
   /listRecentThreads\(\{cursor:\w+,limit:\w+,useStateDbOnly:\w+=!1(?:,background:\w+=!1)?\}\)\{let \w+=\{[^}]*modelProviders:\[\],archived:!1|getCompatibleThreadSortKey\(this\.recentConversationSortKey\),modelProviders:\[\],archived:!1/;
 

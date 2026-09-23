@@ -74,6 +74,27 @@ test("26.901 Electron tokens with vscode font-weight still get menu-item padding
   assert.match(source, /--menu-item-padding:calc\(var\(--spacing\) \* 2\)/);
 });
 
+const ELECTRON_CSS_V915 =
+  "[data-codex-window-type=electron]{--text-sm:13px;--text-xs:12px;--font-weight-medium:500;--font-ui-weight:430;background:0 0;overflow:hidden}";
+
+test("26.915 Electron tokens with font-ui-weight get app-menu-item padding", () => {
+  const { source, status } = patchInSource(ELECTRON_CSS_V915);
+  assert.strictEqual(status, "patched");
+  assert.match(source, /--font-ui-weight:430/);
+  assert.match(source, /--app-menu-item-height:calc\(var\(--spacing\) \* 9\)/);
+  assert.match(source, /--app-menu-item-padding:calc\(var\(--spacing\) \* 2\)/);
+});
+
+const APP_ITEM_BASE =
+  "itemBase:`outline-hidden flex min-h-[var(--app-menu-item-height,0px)] shrink-0 items-center`";
+
+test("raises 26.915 app-menu-item min-height fallback from 0px", () => {
+  const { source, status } = patchInSource(APP_ITEM_BASE);
+  assert.strictEqual(status, "patched");
+  assert.match(source, /min-h-\[var\(--app-menu-item-height,2\.25rem\)\]/);
+  assert.doesNotMatch(source, /min-h-\[var\(--app-menu-item-height,0px\)\]/);
+});
+
 const CMDK_CSS =
   "._comboboxRow_szifs_2[cmdk-item]{min-height:var(--menu-item-height,0px)!important;padding:var(--menu-item-padding,var(--padding-row-y) var(--padding-row-x))!important}";
 
@@ -81,6 +102,15 @@ test("cmdk item 0px min-height fallback becomes 2.25rem", () => {
   const { source, status } = patchInSource(CMDK_CSS);
   assert.strictEqual(status, "patched");
   assert.match(source, /min-height:var\(--menu-item-height,2\.25rem\)!important/);
+});
+
+const CMDK_CSS_V915 =
+  "._comboboxRow_1qhf5_2[cmdk-item]{min-height:var(--app-menu-item-height,0px)!important;padding:var(--app-menu-item-padding,var(--padding-row-y) var(--padding-row-x))!important}";
+
+test("26.915 cmdk item 0px app-menu-item fallback becomes 2.25rem", () => {
+  const { source, status } = patchInSource(CMDK_CSS_V915);
+  assert.strictEqual(status, "patched");
+  assert.match(source, /min-height:var\(--app-menu-item-height,2\.25rem\)!important/);
 });
 
 console.log("all passed");

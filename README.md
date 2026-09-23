@@ -180,7 +180,8 @@ ASAR patch for [**codex-shim**](https://github.com/henry701/codex-shim) integrat
 row padding** (`--menu-item-height` / `--menu-item-padding`, otherwise `0px`) are always applied via
 `patch-model-picker-height.js`. 26.825 allowlist needles: `n.has(a.model)` / `a.useHiddenModels`.
 26.901 Electron CSS also sets `--vscode-font-weight:430`; the height patcher still injects
-`--menu-item-padding` / `--menu-item-height` on that block.
+`--menu-item-padding` / `--menu-item-height` on that block. 26.915 renamed those to
+`--font-ui-weight:430` and `--app-menu-item-padding` / `--app-menu-item-height`.
 Linux auto-update is disabled via `shouldIncludeLinuxPackageUpdater` in `patch-updater.js`. Pets stay
 enabled (`patch-linux-wayland-keyboard.js` is not in `BASE_PATCHES`).
 

@@ -24,6 +24,11 @@ const ELECTRON_TOKENS_V901_FROM =
   "[data-codex-window-type=electron]{--text-sm:13px;--text-xs:12px;--font-weight-medium:500;--vscode-font-weight:430;background:0 0;overflow:hidden}";
 const ELECTRON_TOKENS_V901_TO =
   "[data-codex-window-type=electron]{--text-sm:13px;--text-xs:12px;--font-weight-medium:500;--vscode-font-weight:430;background:0 0;overflow:hidden;--menu-item-padding:calc(var(--spacing) * 2) calc(var(--spacing) * 2.5);--menu-item-height:calc(var(--spacing) * 9)}";
+/** 26.915+: --vscode-font-weight became --font-ui-weight; menu tokens are --app-menu-item-*. */
+const ELECTRON_TOKENS_V915_FROM =
+  "[data-codex-window-type=electron]{--text-sm:13px;--text-xs:12px;--font-weight-medium:500;--font-ui-weight:430;background:0 0;overflow:hidden}";
+const ELECTRON_TOKENS_V915_TO =
+  "[data-codex-window-type=electron]{--text-sm:13px;--text-xs:12px;--font-weight-medium:500;--font-ui-weight:430;background:0 0;overflow:hidden;--app-menu-item-padding:calc(var(--spacing) * 2) calc(var(--spacing) * 2.5);--app-menu-item-height:calc(var(--spacing) * 9)}";
 
 const REPLACEMENTS = [
   { from: SHORT_SCROLL, to: TALL_SCROLL },
@@ -35,8 +40,17 @@ const REPLACEMENTS = [
     from: "min-height:var(--menu-item-height,0px)",
     to: "min-height:var(--menu-item-height,2.25rem)",
   },
+  {
+    from: "min-h-[var(--app-menu-item-height,0px)]",
+    to: "min-h-[var(--app-menu-item-height,2.25rem)]",
+  },
+  {
+    from: "min-height:var(--app-menu-item-height,0px)",
+    to: "min-height:var(--app-menu-item-height,2.25rem)",
+  },
   { from: ELECTRON_TOKENS_FROM, to: ELECTRON_TOKENS_TO },
   { from: ELECTRON_TOKENS_V901_FROM, to: ELECTRON_TOKENS_V901_TO },
+  { from: ELECTRON_TOKENS_V915_FROM, to: ELECTRON_TOKENS_V915_TO },
 ];
 
 function patchInSource(source) {
