@@ -211,7 +211,28 @@ async function main() {
 
   const extractHint = resolveExtractPath();
   let libDir;
-  if (extractHint && !FORCE) {
+  let useExtract = Boolean(extractHint && !FORCE);
+  if (useExtract) {
+    try {
+      const libCandidate = findChatgptLib(extractHint);
+      const metaPath = path.join(libCandidate, "resources", "linux-package-metadata.json");
+      if (fs.existsSync(metaPath) && info.version && info.version !== "unknown") {
+        const meta = JSON.parse(fs.readFileSync(metaPath, "utf-8"));
+        if (meta.version && meta.version !== info.version) {
+          console.log(
+            `   [extract] stale: local ${meta.version} != remote ${info.version}; ignoring extract`,
+          );
+          useExtract = false;
+        }
+      }
+    } catch (err) {
+      console.log(
+        `   [extract] unusable (${err instanceof Error ? err.message : err}); downloading fresh`,
+      );
+      useExtract = false;
+    }
+  }
+  if (useExtract) {
     console.log(`   [extract] ${extractHint}`);
     libDir = findChatgptLib(extractHint);
   } else {
