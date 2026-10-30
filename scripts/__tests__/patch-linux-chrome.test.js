@@ -37,6 +37,14 @@ test("26.901 opaque helpers add linux", () => {
   assert.match(patched, /!L9\(e\)&&\(n===`darwin`\|\|n===`linux`\)/);
 });
 
+test("26.1027 quoted opaque helper adds linux", () => {
+  const source =
+    'function({appearance:e,opaqueWindowsEnabled:t,platform:r}){return t&&!eRE(e)&&("darwin"===r||"win32"===r)}';
+  const { patched, applied } = patchSource(source, { isCheck: false });
+  assert.ok(applied.some((item) => item.id === "linux-opaque-surface-ere-quoted" && item.status === "applied"));
+  assert.match(patched, /"linux"===r/);
+});
+
 test("26.901 Linux titlebar overlay is already upstream", () => {
   const overlay =
     "n===`win32`||n===`linux`?{titleBarStyle:`hidden`,titleBarOverlay:M9(r)}:{titleBarStyle:`default`}";

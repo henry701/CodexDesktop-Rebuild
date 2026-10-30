@@ -13,7 +13,7 @@
  */
 const fs = require("fs");
 const path = require("path");
-const { locateBundles, relPath, parsePlatformArg } = require("./patch-util");
+const { locateMainProcessBundles, mainProcessFilename, relPath, parsePlatformArg } = require("./patch-util");
 
 const REPLACEMENTS = [
   {
@@ -74,6 +74,14 @@ const REPLACEMENTS = [
     to:
       "isFocused:t,platform:n}){return!t&&!L9(e)&&(n===`darwin`||n===`linux`)}",
   },
+  // 26.1027+: opaque helper uses double quotes and eRE, and linux is still omitted.
+  {
+    id: "linux-opaque-surface-ere-quoted",
+    from:
+      'opaqueWindowsEnabled:t,platform:r}){return t&&!eRE(e)&&("darwin"===r||"win32"===r)}',
+    to:
+      'opaqueWindowsEnabled:t,platform:r}){return t&&!eRE(e)&&("darwin"===r||"win32"===r||"linux"===r)}',
+  },
 ];
 
 function patchSource(source, { isCheck }) {
@@ -123,21 +131,14 @@ function main() {
   let bundles;
   if (customRoot) {
     const buildDir = path.join(customRoot, "src", ".vite", "build");
-    const files = fs.existsSync(buildDir)
-      ? fs.readdirSync(buildDir).filter((f) => /^main(-[^.]+)?\.js$/.test(f))
-      : [];
-    const target = files.find((f) => f !== "main.js") || files[0];
+    const target = mainProcessFilename(buildDir);
     if (!target) {
       console.error(`[x] No main bundle under ${buildDir}`);
       process.exit(1);
     }
     bundles = [{ platform: "installed", path: path.join(buildDir, target) }];
   } else {
-    bundles = locateBundles({
-      dir: "build",
-      pattern: /^main(-[^.]+)?\.js$/,
-      platform,
-    });
+    bundles = locateMainProcessBundles({ platform });
   }
 
   if (bundles.length === 0) {

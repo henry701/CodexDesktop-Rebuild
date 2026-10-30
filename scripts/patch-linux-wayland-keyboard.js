@@ -14,7 +14,7 @@
  */
 const fs = require("fs");
 const path = require("path");
-const { locateBundles, relPath, parsePlatformArg } = require("./patch-util");
+const { locateMainProcessBundles, mainProcessFilename, relPath, parsePlatformArg } = require("./patch-util");
 
 const REPLACEMENTS = [
   {
@@ -99,21 +99,14 @@ function main() {
   let bundles;
   if (customRoot) {
     const buildDir = path.join(customRoot, "src", ".vite", "build");
-    const files = fs.existsSync(buildDir)
-      ? fs.readdirSync(buildDir).filter((f) => /^main(-[^.]+)?\.js$/.test(f))
-      : [];
-    const target = files.find((f) => f !== "main.js") || files[0];
+    const target = mainProcessFilename(buildDir);
     if (!target) {
       console.error(`[x] No main bundle under ${buildDir}`);
       process.exit(1);
     }
     bundles = [{ platform: "installed", path: path.join(buildDir, target) }];
   } else {
-    bundles = locateBundles({
-      dir: "build",
-      pattern: /^main(-[^.]+)?\.js$/,
-      platform,
-    });
+    bundles = locateMainProcessBundles({ platform });
   }
 
   if (bundles.length === 0) {

@@ -104,6 +104,61 @@ function locateBundles({ dir, pattern, platform }) {
 }
 
 /**
+ * Electron main-process bundle.
+ *
+ * Through 26.1023 this was `main.js` / `main-<hash>.js`.
+ * 26.1027 moved that code into the large `early-bootstrap-<id>-<hash>.js` chunk
+ * and pointed package.json `main` at `early-bootstrap.js`.
+ *
+ * @param {object} [opts]
+ * @param {string} [opts.platform]
+ * @returns {Array<{platform: string, path: string}>}
+ */
+function locateMainProcessBundles({ platform } = {}) {
+  const getDir = (plat) => path.join(SRC_DIR, plat, "_asar", ".vite", "build");
+  const platforms = platform
+    ? [platform]
+    : PATCH_PLATFORMS.filter((p) => fs.existsSync(getDir(p)));
+
+  const results = [];
+  for (const plat of platforms) {
+    const dir = getDir(plat);
+    const target = mainProcessFilename(dir);
+    if (!target) {
+      console.warn(`  [!] ${plat}: no main or early-bootstrap process bundle`);
+      continue;
+    }
+    results.push({ platform: plat, path: path.join(dir, target) });
+  }
+  return results;
+}
+
+function mainProcessFilename(buildDir) {
+  if (!fs.existsSync(buildDir)) return null;
+  const files = fs.readdirSync(buildDir);
+  const legacy = files.filter((f) => /^main(-[^.]+)?\.js$/.test(f));
+  if (legacy.length > 0) {
+    return legacy.length > 1 ? legacy.find((f) => f !== "main.js") || legacy[0] : legacy[0];
+  }
+  const chunks = files.filter((f) => /^early-bootstrap-.+\.js$/.test(f));
+  let best = null;
+  let bestScore = -1;
+  for (const file of chunks) {
+    const full = path.join(buildDir, file);
+    let score = fs.statSync(full).size;
+    const source = fs.readFileSync(full, "utf8");
+    if (source.includes("removeMenu(") && source.includes("allowInspectElement")) {
+      score += 1e15;
+    }
+    if (score > bestScore) {
+      bestScore = score;
+      best = file;
+    }
+  }
+  return best;
+}
+
+/**
  * Return path relative to project root.
  */
 function relPath(absPath) {
@@ -113,6 +168,8 @@ function relPath(absPath) {
 module.exports = {
   existingAsarPlatforms,
   locateBundles,
+  locateMainProcessBundles,
+  mainProcessFilename,
   parsePlatformArg,
   PATCH_PLATFORMS,
   relPath,

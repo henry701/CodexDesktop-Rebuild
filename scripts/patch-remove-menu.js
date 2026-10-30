@@ -25,18 +25,14 @@
  *   node scripts/patch-remove-menu.js --check       # Dry-run: report matches
  */
 const fs = require("fs");
-const { locateBundles, relPath, parsePlatformArg } = require("./patch-util");
+const { locateMainProcessBundles, relPath, parsePlatformArg } = require("./patch-util");
 
 function main() {
   const args = process.argv.slice(2);
   const isCheck = args.includes("--check");
   const platform = parsePlatformArg(args);
 
-  const bundles = locateBundles({
-    dir: "build",
-    pattern: /^main(-[^.]+)?\.js$/,
-    platform,
-  });
+  const bundles = locateMainProcessBundles({ platform });
 
   if (bundles.length === 0) {
     console.error("[x] No main bundle found");

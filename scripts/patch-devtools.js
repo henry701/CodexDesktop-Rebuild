@@ -14,7 +14,7 @@
 const fs = require("fs");
 const path = require("path");
 const { parse } = require("acorn");
-const { locateBundles, relPath, parsePlatformArg } = require("./patch-util");
+const { locateMainProcessBundles, relPath, parsePlatformArg } = require("./patch-util");
 
 // ──────────────────────────────────────────────
 //  AST walker
@@ -85,11 +85,7 @@ function main() {
   const isCheck = args.includes("--check");
   const platform = parsePlatformArg(args);
 
-  const bundles = locateBundles({
-    dir: "build",
-    pattern: /^main(-[^.]+)?\.js$/,
-    platform,
-  });
+  const bundles = locateMainProcessBundles({ platform });
 
   if (bundles.length === 0) {
     console.error("[x] No main bundle found");

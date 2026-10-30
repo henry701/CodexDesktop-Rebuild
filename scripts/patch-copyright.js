@@ -11,7 +11,7 @@
 const fs = require("fs");
 const path = require("path");
 const { parse } = require("acorn");
-const { locateBundles, relPath, parsePlatformArg } = require("./patch-util");
+const { locateMainProcessBundles, relPath, parsePlatformArg } = require("./patch-util");
 
 // ──────────────────────────────────────────────
 //  Config
@@ -96,11 +96,7 @@ function main() {
   const isCheck = args.includes("--check");
   const platform = parsePlatformArg(args);
 
-  const bundles = locateBundles({
-    dir: "build",
-    pattern: /^main(-[^.]+)?\.js$/,
-    platform,
-  });
+  const bundles = locateMainProcessBundles({ platform });
 
   if (bundles.length === 0) {
     console.error("[x] No main bundle found");
@@ -119,9 +115,15 @@ function main() {
     const patches = collectPatches(ast, source);
 
     if (patches.length === 0) {
-      // Check if already patched
-      if (source.includes(NEW_COPYRIGHT)) {
+      const htmlCopyright = '<div class="copyright">\\xa9 OpenAI</div>';
+      const htmlReplacement = '<div class="copyright">\\xa9 OpenAI \\xb7 Cometix Space</div>';
+      if (source.includes(NEW_COPYRIGHT) || source.includes(htmlReplacement)) {
         console.log("   [ok] Already patched");
+      } else if (source.includes(htmlCopyright)) {
+        if (!isCheck) {
+          fs.writeFileSync(bundle.path, source.replace(htmlCopyright, htmlReplacement), "utf-8");
+        }
+        console.log(`   [${isCheck ? "?" : "*"}] about-dialog html copyright`);
       } else {
         console.log("   [!] No copyright property matched");
       }
