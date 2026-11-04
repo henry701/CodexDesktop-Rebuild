@@ -21,7 +21,7 @@
  */
 const fs = require("fs");
 const path = require("path");
-const { relPath, SRC_DIR, parsePlatformArg, existingAsarPlatforms } = require("./patch-util");
+const { relPath, SRC_DIR, parsePlatformArg, existingAsarPlatforms, walkAssetFiles } = require("./patch-util");
 
 const ID = "[$A-Za-z_][\\w$]*";
 
@@ -104,11 +104,7 @@ function assetsDir(platform, customRoot) {
 }
 
 function listJsFiles(dir) {
-  if (!fs.existsSync(dir)) return [];
-  return fs
-    .readdirSync(dir)
-    .filter((f) => f.endsWith(".js"))
-    .map((f) => path.join(dir, f));
+  return walkAssetFiles(dir, [".js"]);
 }
 
 function buildQueryReplacement(callee, hostId) {
@@ -158,6 +154,15 @@ function patchQueryInSource(source) {
   }
   if (QUERY_MODEL_LIST_ALT_RE.test(next)) {
     next = next.replace(new RegExp(QUERY_MODEL_LIST_ALT_RE.source, "g"), QUERY_MODEL_LIST_ALT_ALREADY);
+    changed = true;
+  }
+  // 26.1104+: renderer uses double quotes and a trailing options object.
+  const raised = next.replace(
+    /sendRequest\((["'`])model\/list\1,\{[^{}]*\blimit:(?!1e4\b)[^,}]+/g,
+    (match) => match.replace(/\blimit:(?!1e4\b)[^,}]+/, "limit:1e4"),
+  );
+  if (raised !== next) {
+    next = raised;
     changed = true;
   }
 

@@ -8,7 +8,7 @@
  */
 const fs = require("fs");
 const path = require("path");
-const { relPath, SRC_DIR, parsePlatformArg, existingAsarPlatforms } = require("./patch-util");
+const { relPath, SRC_DIR, parsePlatformArg, existingAsarPlatforms, walkAssetFiles } = require("./patch-util");
 
 const SHORT_SCROLL =
   "vertical-scroll-fade-mask flex max-h-[250px] flex-col overflow-y-auto";
@@ -87,8 +87,7 @@ function main() {
   }
 
   let hit = false;
-  for (const name of fs.readdirSync(dir).filter((f) => f.endsWith(".js") || f.endsWith(".css"))) {
-    const filePath = path.join(dir, name);
+  for (const filePath of walkAssetFiles(dir, [".js", ".css"])) {
     const source = fs.readFileSync(filePath, "utf8");
     const result = patchInSource(source);
     if (result.status === "missing") continue;

@@ -11,7 +11,7 @@
  */
 const fs = require("fs");
 const path = require("path");
-const { relPath, SRC_DIR, parsePlatformArg, existingAsarPlatforms } = require("./patch-util");
+const { relPath, SRC_DIR, parsePlatformArg, existingAsarPlatforms, walkAssetFiles } = require("./patch-util");
 
 const ID = "[$A-Za-z_][\\w$]*";
 
@@ -44,9 +44,9 @@ const SIDEBAR_RE = new RegExp(
 const SIDEBAR_ALREADY =
   /listRecentThreads\(\{cursor:\w+,limit:\w+,useStateDbOnly:\w+=!1(?:,background:\w+=!1)?\}\)\{let \w+=\{[^}]*modelProviders:\[\],archived:!1/;
 const SIDEBAR_V814_FROM =
-  "getCompatibleThreadSortKey(this.recentConversationSortKey),modelProviders:null,archived:!1,sourceKinds:";
+  "getCompatibleThreadSortKey(this.recentConversationSortKey),modelProviders:null,archived:!1,";
 const SIDEBAR_V814_TO =
-  "getCompatibleThreadSortKey(this.recentConversationSortKey),modelProviders:[],archived:!1,sourceKinds:";
+  "getCompatibleThreadSortKey(this.recentConversationSortKey),modelProviders:[],archived:!1,";
 
 function assetsDir(platform, customRoot) {
   if (customRoot) {
@@ -56,11 +56,7 @@ function assetsDir(platform, customRoot) {
 }
 
 function listJsFiles(dir) {
-  if (!fs.existsSync(dir)) return [];
-  return fs
-    .readdirSync(dir)
-    .filter((f) => f.endsWith(".js"))
-    .map((f) => path.join(dir, f));
+  return walkAssetFiles(dir, [".js"]);
 }
 
 function replaceOnceRegex(source, re, buildReplacement, alreadyRe) {
@@ -77,12 +73,6 @@ function replaceOnceRegex(source, re, buildReplacement, alreadyRe) {
 }
 
 function patchPicker(source) {
-  const allowlisted =
-    /!1\?[$A-Za-z_]\w*\.has\([$A-Za-z_]\w*\.model\):![$A-Za-z_]\w*\.hidden/.test(source) &&
-    /!1\?[$A-Za-z_]\w*\.availableModels\.has\([$A-Za-z_]\w*\.model\):![$A-Za-z_]\w*\.hidden/.test(source);
-  if (allowlisted) {
-    return { source, status: "already" };
-  }
   let next = source;
   let changed = false;
   if (next.includes(PICKER_V814_FROM)) {
@@ -99,6 +89,22 @@ function patchPicker(source) {
   }
   if (next.includes(PICKER_V825_FILTER_FROM)) {
     next = next.replace(PICKER_V825_FILTER_FROM, PICKER_V825_FILTER_TO);
+    changed = true;
+  }
+  const quotedAllow = next.replace(
+    /([$A-Za-z_]\w*)&&!([$A-Za-z_]\w*)&&"amazonBedrock"!==([$A-Za-z_]\w*)\?([$A-Za-z_]\w*)\.has\(([$A-Za-z_]\w*)\.model\)/g,
+    "!1?$4.has($5.model)",
+  );
+  if (quotedAllow !== next) {
+    next = quotedAllow;
+    changed = true;
+  }
+  const quotedFilter = next.replace(
+    /([$A-Za-z_]\w*)\.useHiddenModels&&"amazonBedrock"!==([$A-Za-z_]\w*)\?([$A-Za-z_]\w*)\.availableModels\.has\(([$A-Za-z_]\w*)\.model\):!([$A-Za-z_]\w*)\.hidden/g,
+    "!1?$3.availableModels.has($4.model):!$5.hidden",
+  );
+  if (quotedFilter !== next) {
+    next = quotedFilter;
     changed = true;
   }
   const genericAllow = next.replace(
@@ -118,6 +124,12 @@ function patchPicker(source) {
     changed = true;
   }
   if (changed) return { source: next, status: "patched" };
+  if (
+    /!1\?[$A-Za-z_]\w*\.has\([$A-Za-z_]\w*\.model\)/.test(next) ||
+    /!1\?[$A-Za-z_]\w*\.availableModels\.has\([$A-Za-z_]\w*\.model\)/.test(next)
+  ) {
+    return { source: next, status: "already" };
+  }
 
   return replaceOnceRegex(
     source,
@@ -156,15 +168,14 @@ function applyInDir(dir, patchId, patchFn, dryRun, { required = false } = {}) {
     }
     if (result.status === "already") {
       console.log(`  [ok] ${relPath(filePath)}: ${patchId} already applied`);
-      return true;
+      continue;
     }
     if (dryRun) {
       console.log(`  [?] ${relPath(filePath)}: would patch (${patchId})`);
-      return true;
+      continue;
     }
     fs.writeFileSync(filePath, result.source, "utf8");
     console.log(`  [ok] ${relPath(filePath)}: patched (${patchId})`);
-    return true;
   }
   if (!found) {
     console.log(`  ${required ? "[!]" : "[skip]"} ${patchId}: no bundle contains needle`);
@@ -178,6 +189,9 @@ function main() {
   const dryRun = args.includes("--check");
   const platform = parsePlatformArg(args) || existingAsarPlatforms()[0] || "linux-x64";
   const dir = assetsDir(platform, process.env.PATCH_ASAR_ROOT);
+  const buildDir = process.env.PATCH_ASAR_ROOT
+    ? path.join(process.env.PATCH_ASAR_ROOT, "src", ".vite", "build")
+    : path.join(SRC_DIR, platform, "_asar", ".vite", "build");
 
   if (!fs.existsSync(dir)) {
     console.error(`  [!] assets dir missing: ${dir} — run npm run sync first`);
@@ -188,8 +202,18 @@ function main() {
   if (!applyInDir(dir, "model-picker-allowlist", patchPicker, dryRun, { required: true })) {
     ok = false;
   }
+  if (fs.existsSync(buildDir)) {
+    if (!applyInDir(buildDir, "model-picker-allowlist", patchPicker, dryRun, { required: false })) {
+      ok = false;
+    }
+  }
   if (!applyInDir(dir, "sidebar-provider-filter", patchSidebar, dryRun, { required: false })) {
     ok = false;
+  }
+  if (fs.existsSync(buildDir)) {
+    if (!applyInDir(buildDir, "sidebar-provider-filter", patchSidebar, dryRun, { required: false })) {
+      ok = false;
+    }
   }
   if (!ok) process.exit(1);
 }

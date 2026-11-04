@@ -136,4 +136,14 @@ test("26.825 picker hook is idempotent", () => {
   assert.strictEqual(twice.status, "already");
 });
 
+test("26.1104 double-quoted model/list limit becomes 1e4", () => {
+  const src =
+    'await n.sendRequest("model/list",{includeHidden:!0,cursor:null,limit:100},{priority:"critical"});' +
+    'await t.sendRequest("model/list",{includeHidden:!0,cursor:o,limit:100},{priority:"critical"});';
+  const { source, status } = patchQueryInSource(src);
+  assert.strictEqual(status, "patched");
+  assert.equal(source.includes("limit:100"), false);
+  assert.equal((source.match(/limit:1e4/g) || []).length, 2);
+});
+
 console.log("all passed");

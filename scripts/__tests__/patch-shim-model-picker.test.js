@@ -53,6 +53,14 @@ test("26.825 sidebar modelProviders null → []", () => {
   assert.match(source, /modelProviders:\[\],archived:!1,sourceKinds:Mht/);
 });
 
+test("26.1104 sidebar keeps originators between archived and sourceKinds", () => {
+  const src =
+    "getCompatibleThreadSortKey(this.recentConversationSortKey),modelProviders:null,archived:!1,originators:e,sourceKinds:tC.mu";
+  const { source, status } = patchSidebar(src);
+  assert.strictEqual(status, "patched");
+  assert.match(source, /modelProviders:\[\],archived:!1,originators:e,sourceKinds:tC\.mu/);
+});
+
 test("renamed-minifier amazonBedrock allowlist still force-off", () => {
   const src =
     "q&&!w&&host!==`amazonBedrock`?allow.has(row.model):!row.hidden;cfg.useHiddenModels&&prov!==`amazonBedrock`?cfg.availableModels.has(e.model):!e.hidden";
@@ -60,6 +68,18 @@ test("renamed-minifier amazonBedrock allowlist still force-off", () => {
   assert.strictEqual(status, "patched");
   assert.match(source, /!1\?allow\.has\(row\.model\):!row\.hidden/);
   assert.match(source, /!1\?cfg\.availableModels\.has\(e\.model\):!e\.hidden/);
+});
+
+test("26.1104 double-quoted allowlist still force-off", () => {
+  const src =
+    'o&&!a&&"amazonBedrock"!==n?r.has(s.model)||"apikey"===n:!s.hidden;i.useHiddenModels&&"amazonBedrock"!==a?i.availableModels.has(e.model):!e.hidden';
+  const { source, status } = patchPicker(src);
+  assert.strictEqual(status, "patched");
+  assert.match(source, /!1\?r\.has\(s\.model\)/);
+  assert.match(source, /!1\?i\.availableModels\.has\(e\.model\):!e\.hidden/);
+  assert.match(source, /"apikey"===n/);
+  const again = patchPicker(source);
+  assert.strictEqual(again.status, "already");
 });
 
 console.log("all passed");

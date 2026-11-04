@@ -103,6 +103,26 @@ function patchSource(source, { isCheck }) {
     applied.push({ ...rule, status: "applied" });
   }
 
+  const quotedOpaque = new RegExp(
+    'opaqueWindowsEnabled:t,platform:r\\}\\)\\{return t&&!([A-Za-z_$][\\w$]*)\\(e\\)&&\\("darwin"===r\\|\\|"win32"===r\\)\\}',
+    "g",
+  );
+  if (quotedOpaque.test(patched)) {
+    quotedOpaque.lastIndex = 0;
+    const from = patched;
+    patched = patched.replace(
+      quotedOpaque,
+      'opaqueWindowsEnabled:t,platform:r}){return t&&!$1(e)&&("darwin"===r||"win32"===r||"linux"===r)}',
+    );
+    applied.push({
+      id: "linux-opaque-surface-quoted-any",
+      from,
+      to: patched,
+      status: isCheck ? "would-apply" : "applied",
+    });
+    if (isCheck) patched = from;
+  }
+
   return { patched, applied };
 }
 

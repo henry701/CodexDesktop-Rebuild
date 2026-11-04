@@ -158,6 +158,20 @@ function mainProcessFilename(buildDir) {
   return best;
 }
 
+function walkAssetFiles(dir, extensions = [".js"]) {
+  if (!fs.existsSync(dir)) return [];
+  const out = [];
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      out.push(...walkAssetFiles(full, extensions));
+      continue;
+    }
+    if (extensions.some((ext) => entry.name.endsWith(ext))) out.push(full);
+  }
+  return out;
+}
+
 /**
  * Return path relative to project root.
  */
@@ -170,6 +184,7 @@ module.exports = {
   locateBundles,
   locateMainProcessBundles,
   mainProcessFilename,
+  walkAssetFiles,
   parsePlatformArg,
   PATCH_PLATFORMS,
   relPath,
