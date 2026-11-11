@@ -31,6 +31,7 @@ const BASE_PATCHES = [
   "patch-model-list-pagination.js",
   "patch-model-picker-height.js",
   "patch-fast-mode.js",
+  "patch-usage-send.js",
   "patch-plugin-auth.js",
   "patch-updater.js",
 ];
