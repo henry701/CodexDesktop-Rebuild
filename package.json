@@ -1,7 +1,7 @@
 {
   "name": "codex-rebuild",
   "productName": "Codex",
-  "version": "26.1106.51428",
+  "version": "26.1111.71704",
   "description": "Codex Electron App - Cross-platform Build",
   "engines": {
     "node": ">=24 <25"
@@ -82,7 +82,7 @@
     "zod": "^4.1.13"
   },
   "codexBuildFlavor": "prod",
-  "codexBuildNumber": "26605",
+  "codexBuildNumber": "29030",
   "codexSparkleFeedUrl": "https://persistent.oaistatic.com/codex-app-prod/appcast-x64.xml",
   "codexSparklePublicKey": "mNfr1v9t63BfgDtlw4C8lRvSY6uMggIXABDOCi3tS6k="
 }
